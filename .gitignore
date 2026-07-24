@@ -1,0 +1,87 @@
+# Archives
+*.zip
+
+# MkDocs / local site output (if added later)
+site/
+.cache/
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.spec
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+.venv-build/
+venv/
+env/
+
+# uv (keep lock file tracked)
+# uv.lock   <-- DO NOT ignore
+
+# -----------------------------
+# Testing / coverage
+# -----------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# -----------------------------
+# Type checking / lint
+# -----------------------------
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# -----------------------------
+# IDE / editor
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------
+# macOS
+# -----------------------------
+.DS_Store
+
+# -----------------------------
+# Logs
+# -----------------------------
+*.log
+
+# -----------------------------
+# Local developer workspace
+# -----------------------------
+tmp/
+*.tmp
+
+# -----------------------------
+# NiceGUI runtime
+# -----------------------------
+nicegui_storage/
+
+# -----------------------------
+# AcqStore Server packaging (also ignored under packaging/acqstore_server/)
+# -----------------------------
+packaging/acqstore_server/_secrets.sh
+packaging/acqstore_server/.venv-build/
+packaging/acqstore_server/build/
+packaging/acqstore_server/dist/
