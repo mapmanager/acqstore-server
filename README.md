@@ -78,7 +78,20 @@ Representative-format tests are optional and skip cleanly when local fixtures ar
 
 ## Documentation
 
-Developer and client docs live under [`docs-dev/`](docs-dev/README.md). Start with the [client roadmap](docs-dev/client-roadmap.md).
+MkDocs source lives under [`docs/`](docs/). [`docs-dev/`](docs-dev/README.md) remains the working and historical documentation archive.
+
+Local preview and strict build:
+
+```bash
+uv sync --group docs
+uv run --no-sync mkdocs serve
+```
+
+```bash
+uv run --no-sync mkdocs build --strict
+```
+
+Start with the [client roadmap](docs/client-roadmap.md) (also mirrored under [`docs-dev/`](docs-dev/client-roadmap.md)).
 
 ## macOS packaging
 

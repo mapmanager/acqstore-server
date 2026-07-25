@@ -1,0 +1,50 @@
+site_name: AcqStore Server
+site_description: Local HTTP API and desktop status UI for AcqStore
+site_author: Robert Cudmore
+
+repo_name: mapmanager/acqstore-server
+repo_url: https://github.com/mapmanager/acqstore-server
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Client Roadmap: client-roadmap.md
+  - Reference:
+      - Overview: reference/index.md
+      - API: reference/api.md
+      - Architecture: reference/architecture.md
+      - Client Handoff: reference/client-handoff.md
+      - Demo: reference/demo.md
+      - Errors: reference/errors.md
+      - Format Validation: reference/format-validation.md
+      - JavaScript Client: reference/javascript-client.md
+      - Python Client: reference/python-client.md
+      - Representative Format Testing: reference/representative-format-testing.md
+      - Testing: reference/testing.md
+  - API v1:
+      - Overview: v1/index.md
+      - Entry Point and Packaging: v1/entry-point-and-packaging.md
+      - HTML Integration: v1/html-integration.md
+      - LLM Agent Guide: v1/llm-agent-guide.md
+      - Reference API: v1/reference-api.md
+      - Roadmap: v1/roadmap.md

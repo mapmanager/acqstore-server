@@ -1,0 +1,57 @@
+# Copyright (c) Robert Cudmore
+#
+# File: .github/workflows/docs.yml
+#
+# Build-only MkDocs validation. Does not deploy documentation or require
+# GitHub Pages.
+
+name: Docs
+run-name: Docs • ${{ github.ref_name }} • ${{ github.event_name }}
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.python-version'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: acqstore-server
+
+    steps:
+      - name: Check out AcqStore Server
+        uses: actions/checkout@v4
+        with:
+          path: acqstore-server
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.2'
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: acqstore-server/.python-version
+
+      - name: Validate dependency lock
+        run: uv lock --check
+
+      - name: Install documentation dependencies
+        run: uv sync --frozen --only-group docs
+
+      - name: Build documentation
+        run: uv run --no-sync mkdocs build --strict
