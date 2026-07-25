@@ -28,6 +28,8 @@ rm -f "$ZIP_PATH"
 zip -r "$ZIP_PATH" \
     src \
     tests \
+    docs \
+    mkdocs.yml \
     docs-dev \
     packaging \
     scripts \
