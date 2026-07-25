@@ -1,6 +1,7 @@
 site_name: AcqStore Server
-site_description: Local HTTP API and desktop status UI for AcqStore
+site_description: Local desktop app and API v2 for opening acquisitions with AcqStore
 site_author: Robert Cudmore
+site_url: https://acqstore-server.pages.dev/
 
 repo_name: mapmanager/acqstore-server
 repo_url: https://github.com/mapmanager/acqstore-server
@@ -11,40 +12,75 @@ theme:
   features:
     - navigation.instant
     - navigation.sections
+    - navigation.indexes
     - content.code.copy
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
 
 markdown_extensions:
   - admonition
   - attr_list
   - def_list
   - footnotes
+  - md_in_html
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - tables
   - toc:
       permalink: true
 
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Client Roadmap: client-roadmap.md
-  - Reference:
-      - Overview: reference/index.md
-      - API: reference/api.md
-      - Architecture: reference/architecture.md
-      - Client Handoff: reference/client-handoff.md
+  - End user:
+      - users/index.md
+      - Get the desktop app: users/install.md
+      - Request the desktop app: users/request-desktop-app.md
+      - Status window: users/gui.md
+      - Built-in demo: users/demo.md
+  - Build a client:
+      - llm/index.md
+      - Build a first client: llm/build-a-client.md
+      - Cursor prompt: llm/prompt.md
+  - Reference (details):
+      - reference/index.md
+      - API contract: reference/api.md
+      - JavaScript client: reference/javascript-client.md
       - Demo: reference/demo.md
       - Errors: reference/errors.md
-      - Format Validation: reference/format-validation.md
-      - JavaScript Client: reference/javascript-client.md
-      - Python Client: reference/python-client.md
-      - Representative Format Testing: reference/representative-format-testing.md
-      - Testing: reference/testing.md
-  - API v1:
-      - Overview: v1/index.md
-      - Entry Point and Packaging: v1/entry-point-and-packaging.md
-      - HTML Integration: v1/html-integration.md
-      - LLM Agent Guide: v1/llm-agent-guide.md
-      - Reference API: v1/reference-api.md
-      - Roadmap: v1/roadmap.md
+      - Client handoff: reference/client-handoff.md
+  - API:
+      - api/index.md
+      - Schemas: api/schemas.md
+      - Routes: api/routes.md
+      - Open service: api/open-service.md

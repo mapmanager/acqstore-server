@@ -2,10 +2,7 @@
 
 This is the primary integration guide for JavaScript clients using **AcqStore Server API v2**.
 
-AcqStore Server must already be running. A client may connect to either:
-
-- the packaged macOS application supplied by the AcqStore Server developers; or
-- a server started from the CloudScope source tree by a Python developer.
+AcqStore Server must already be running (normally the packaged desktop app).
 
 The default local address is:
 

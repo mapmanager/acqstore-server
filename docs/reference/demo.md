@@ -39,6 +39,4 @@ Immediately before canvas rendering, the demo calls `transposePlane()` for both 
 
 ## Compatibility
 
-The v2 demo is independent of the frozen v1 demo at `/demo/`. It contains no application-specific channel roles and is not tied to an external calcium client.
-
 Keep this demo synchronized with the API reference, JavaScript guide, and OpenAPI contract tests.

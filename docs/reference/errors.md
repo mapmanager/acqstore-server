@@ -35,8 +35,6 @@ HTTP 422
 error = request_validation_failed
 ```
 
-This normalization is scoped to `/api/v2`. The frozen v1 API retains its existing FastAPI validation response.
-
 ## Common service codes
 
 | Code | Typical status | Meaning |

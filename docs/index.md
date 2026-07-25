@@ -1,24 +1,21 @@
 # AcqStore Server
 
-AcqStore Server is a small **local** HTTP service that uses [AcqStore](https://github.com/mapmanager/acqstore) to open scientific image acquisitions and expose metadata and image planes to thin clients (browser demos, custom JavaScript/Python clients, and a native status UI).
+AcqStore Server is a small **local** app: a status window plus an HTTP API that opens scientific image files with [AcqStore](https://github.com/mapmanager/acqstore) and serves metadata and image planes to thin clients (browser pages, custom JavaScript, and the built-in demo).
 
-API **v2** is the current client target. API **v1** remains available for existing integrations.
+This site covers:
+
+- using the packaged desktop app and its status window
+- the built-in demo page at `/demo/v2/`
+- building your own HTML/JavaScript client against **API v2**
+
+While the app is running, the live API contract is at `http://127.0.0.1:8767/docs` (Swagger) and `http://127.0.0.1:8767/openapi.json`.
 
 ## Start here
 
-- [Getting Started](getting-started.md) — install, run, and local URLs
-- [Client Roadmap](client-roadmap.md) — first client workflow for API v2
-- [API Reference](reference/api.md) — detailed v2 contract
-- [JavaScript Client](reference/javascript-client.md)
-- [Python Client](reference/python-client.md)
-- [Demo](reference/demo.md)
+- [Get the desktop app](users/install.md) — request and run the packaged app
+- [Status window](users/gui.md) — what the five buttons do
+- [Built-in demo](users/demo.md) — open a file and view images
+- [Build a client](llm/build-a-client.md) — first JavaScript / LLM path
+- [Cursor prompt](llm/prompt.md) — copy-paste prompt for an agent
 
-Archived API v1 documentation lives under [API v1](v1/index.md).
-
-## Local-only networking
-
-The server binds to loopback by default (`127.0.0.1:8767`) and refuses non-loopback hosts unless you change the bind policy in code. It is intended for local clients on the same machine, not remote network access.
-
-## Repository status
-
-This project is under private / development use. Documentation in this site is for local browsing and CI build validation; it is not a published public documentation deployment.
+Optional detail lives under [Reference (details)](reference/index.md). Python module docs are under [API](api/index.md).

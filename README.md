@@ -2,7 +2,7 @@
 
 AcqStore Server is a small **local** HTTP service that uses [AcqStore](https://github.com/mapmanager/acqstore) to open scientific image acquisitions and expose metadata and image planes to thin clients (browser demos, custom JavaScript/Python clients, and a native status UI).
 
-API v2 is the active client target. API v1 remains available for existing integrations.
+API v2 is the client target documented on the public docs site.
 
 ## Relationship to AcqStore
 
@@ -78,7 +78,9 @@ Representative-format tests are optional and skip cleanly when local fixtures ar
 
 ## Documentation
 
-MkDocs source lives under [`docs/`](docs/). [`docs-dev/`](docs-dev/README.md) remains the working and historical documentation archive.
+Public docs site: [https://acqstore-server.pages.dev/](https://acqstore-server.pages.dev/)
+
+MkDocs source is under [`docs/`](docs/) (end-user GUI, LLM/JS client path, optional reference detail, and a small mkdocstrings API section). Working notes may still live under `docs-dev/` for maintainers; the published site does not link there.
 
 Local preview and strict build:
 
@@ -90,8 +92,6 @@ uv run --no-sync mkdocs serve
 ```bash
 uv run --no-sync mkdocs build --strict
 ```
-
-Start with the [client roadmap](docs/client-roadmap.md) (also mirrored under [`docs-dev/`](docs-dev/client-roadmap.md)).
 
 ## macOS packaging
 

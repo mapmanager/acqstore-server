@@ -6,8 +6,7 @@ This page is the handoff checklist for a senior JavaScript developer or an exper
 
 A running AcqStore Server is required.
 
-- End users and JavaScript developers normally receive the packaged macOS application from the AcqStore Server developers.
-- Python developers may run the server from source with `uv run python -m acqstore_server`.
+- Use the packaged desktop app you requested and received.
 
 Default server URL:
 
@@ -34,9 +33,11 @@ A correct baseline client must:
 - decode `raw-f32-le` explicitly;
 - use `plane.shape` and `plane.axes` for geometry;
 - treat display transpose as a client decision;
+- display source (primary) planes and, when present, reference planes;
+- show `reference.scanPath` / `reference.lineRoi` when the open response includes them;
 - handle stable JSON errors;
 - delete the session when finished.
 
 ## Acceptance check
 
-The client is ready when it can reproduce the lifecycle shown by `/demo/v2/` without reading the Python implementation.
+The client is ready when it can reproduce the lifecycle shown by `/demo/v2/` — including primary images, reference images when present, and the reference line-scan path when available — without reading the Python implementation.

@@ -1,20 +1,14 @@
-# AcqStore Server client roadmap
+# Build a first client
 
 This is the complete onboarding path for a new browser or JavaScript client.
 
-**Goal:** open one acquisition, read its AcqStore header, fetch one source image plane, display it, and delete the server session.
+**Goal:** open one acquisition, read its AcqStore header, display source (primary) image planes and any reference image planes, show the reference line-scan path when present, and delete the server session.
 
 The API is deliberately small. A first client needs only health, capabilities, open, one binary data request, and session deletion.
 
 ## 1. Start the server
 
-External developers normally run the packaged **AcqStore Server.app** supplied by the AcqStore Server developers.
-
-From this repository (with sibling `../acqstore`), start the equivalent server with:
-
-```bash
-uv run python -m acqstore_server
-```
+Run the packaged desktop app you requested and received. While it is running, the local API is available on loopback.
 
 The default addresses are:
 
@@ -220,19 +214,20 @@ health
 → capabilities
 → pick-and-open or open
 → read header and plane metadata
-→ fetch one channels[].dataUrl
+→ fetch source channels[].dataUrl values
+→ when present, fetch reference.channels[].dataUrl and read reference.scanPath / reference.lineRoi
 → validate and decode little-endian Float32
-→ display original or client-transposed plane
+→ display original or client-transposed planes
 → delete session
 ```
 
 Use the detailed reference only when needed:
 
-- [API contract](reference/api.md)
-- [Complete JavaScript client patterns](reference/javascript-client.md)
-- [Stable errors](reference/errors.md)
-- [Maintained demo behavior](reference/demo.md)
-- [Reference index](reference/index.md)
+- [API contract](../reference/api.md)
+- [Complete JavaScript client patterns](../reference/javascript-client.md)
+- [Stable errors](../reference/errors.md)
+- [Maintained demo behavior](../reference/demo.md)
+- [Client handoff checklist](../reference/client-handoff.md)
 
 The server's interactive OpenAPI documentation is also available at:
 
