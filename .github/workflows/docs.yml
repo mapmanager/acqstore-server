@@ -13,6 +13,8 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      # mkdocstrings pages are generated from the v2 source modules.
+      - 'src/**'
       - 'mkdocs.yml'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -35,6 +37,16 @@ jobs:
         with:
           path: acqstore-server
           fetch-depth: 0
+
+      # Required as a sibling checkout so uv can resolve the editable
+      # `acqstore` source dependency declared in pyproject.toml.
+      - name: Check out AcqStore
+        uses: actions/checkout@v4
+        with:
+          repository: mapmanager/acqstore
+          # Pinned to the verified local acqstore commit at extraction time.
+          ref: 5133b6839a225d1ba85b7cd07a852d67e0c82475
+          path: acqstore
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
