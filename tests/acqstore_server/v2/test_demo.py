@@ -33,7 +33,7 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
 
     assert 'function transposePlane(values, shape)' in html
     assert 'const displayPlane = transposePlane(values, plane.shape)' in html
-    assert 'drawPlane(canvas, displayPlane.values, displayPlane.shape)' in html
+    assert 'function drawPlane(canvas, values, shape, display)' in html
     assert 'array dimension 1 horizontally' not in html
     assert '>Open File</button>' in html
     assert 'Server-accessible path' not in html
@@ -45,7 +45,29 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     assert 'id="showScanPath" type="checkbox" checked' in html
     assert 'function drawScanPath(canvas, sourceShape, scanPath, lineRoi)' in html
     assert 'scanPathPoints(reference.scanPath, reference.lineRoi)' in html
-    assert "showScanPath.addEventListener('change', redrawReferenceChannels)" in html
+    assert "contrastController.redrawGroup('reference')" in html
+    assert 'function createContrastController(elements, redrawView)' in html
+    assert 'id="contrastTarget"' in html
+    assert 'id="contrastLut"' in html
+    assert 'id="rangeHistogram"' in html
+    assert 'id="rangeMin"' in html
+    assert 'id="rangeMax"' in html
+    assert 'id="rangeAuto"' in html
+    for lut in (
+        'gray',
+        'yellow',
+        'cyan',
+        'magenta',
+        'red',
+        'green',
+        'fire',
+        'hot',
+        'viridis',
+        'magma',
+        'inferno',
+        'cividis',
+    ):
+        assert f'<option value="{lut}">' in html
 
 
 def test_v2_demo_is_served_at_versioned_path() -> None:

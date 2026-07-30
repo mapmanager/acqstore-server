@@ -33,3 +33,5 @@ def test_native_status_ui_source_targets_v2() -> None:
     source = Path(status_ui_module.__file__).read_text(encoding='utf-8')
     assert "f'{base}/demo/v2/'" in source
     assert "f'{base}/api/v2/health'" in source
+    assert "PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'" in source
+    assert 'Documentation' in source

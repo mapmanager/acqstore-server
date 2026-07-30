@@ -78,7 +78,7 @@ Representative-format tests are optional and skip cleanly when local fixtures ar
 
 ## Documentation
 
-Public docs site: [https://acqstore-server.pages.dev/](https://acqstore-server.pages.dev/)
+Public docs site: [https://mapmanager.github.io/acqstore-server/](https://mapmanager.github.io/acqstore-server/)
 
 MkDocs source is under [`docs/`](docs/) (end-user GUI, LLM/JS client path, optional reference detail, and a small mkdocstrings API section). Working notes may still live under `docs-dev/` for maintainers; the published site does not link there.
 

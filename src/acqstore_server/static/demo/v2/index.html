@@ -22,6 +22,18 @@ button:disabled { opacity:.45; cursor:default; }
 .section-heading h2 { margin:0; }
 .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer; }
 .toggle input { margin:0; }
+.contrast-controls { display:flex; flex-wrap:wrap; align-items:end; gap:10px; }
+.contrast-controls label { display:grid; gap:4px; color:var(--muted); font-size:12px; }
+.contrast-controls select { min-width:150px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
+.range-popover { position:fixed; z-index:20; width:330px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:#07101f; box-shadow:0 16px 38px rgba(0,0,0,.55); }
+.range-popover[hidden] { display:none; }
+.range-popover h2 { margin-bottom:8px; }
+.histogram-wrap { padding:4px; border:1px solid var(--line); border-radius:8px; background:#020617; }
+#rangeHistogram { width:300px; height:100px; cursor:ew-resize; touch-action:none; }
+.range-fields { display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:8px; margin-top:8px; }
+.range-fields label { display:grid; gap:4px; color:var(--muted); font-size:12px; }
+.range-fields input { width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
+.range-hint { margin:7px 0 0; }
 summary { color:var(--text); cursor:pointer; font-size:15px; font-weight:700; }
 details[open] summary { margin-bottom:10px; }
 .canvas-wrap { overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:8px; background:#020617; }
@@ -39,6 +51,43 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
 </div>
 <div id="status" class="status"></div>
 <p id="serverInfo" class="meta">Checking server…</p>
+<section id="contrastCard" class="card" hidden>
+  <h2>Contrast</h2>
+  <div class="contrast-controls">
+    <label>Channel
+      <select id="contrastTarget"></select>
+    </label>
+    <label>Color LUT
+      <select id="contrastLut">
+        <option value="gray">Gray</option>
+        <option value="yellow">Yellow</option>
+        <option value="cyan">Cyan</option>
+        <option value="magenta">Magenta</option>
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="fire">Fire</option>
+        <option value="hot">Hot</option>
+        <option value="viridis">Viridis</option>
+        <option value="magma">Magma</option>
+        <option value="inferno">Inferno</option>
+        <option value="cividis">Cividis</option>
+      </select>
+    </label>
+    <button id="rangeBtn" type="button">Range…</button>
+  </div>
+</section>
+<div id="rangePopover" class="range-popover" hidden role="dialog" aria-label="Display range">
+  <h2 id="rangeTitle">Display range</h2>
+  <div class="histogram-wrap">
+    <canvas id="rangeHistogram" width="300" height="100"></canvas>
+  </div>
+  <div class="range-fields">
+    <label>Min <input id="rangeMin" type="number" step="any"></label>
+    <label>Max <input id="rangeMax" type="number" step="any"></label>
+    <button id="rangeAuto" type="button">Auto</button>
+  </div>
+  <p class="range-hint">Drag the dark and light handles or enter values. Display only.</p>
+</div>
 <section class="card">
   <h2>Source channels</h2>
   <div id="channels" class="grid"></div>
@@ -81,7 +130,6 @@ const headerPre = document.getElementById('headerPre');
 const sessionPre = document.getElementById('sessionPre');
 const serverInfoEl = document.getElementById('serverInfo');
 let currentSessionId = null;
-let referenceRenderStates = [];
 
 function setBusy(busy) {
   pickBtn.disabled = busy;
@@ -136,7 +184,7 @@ async function deleteCurrentSession() {
     referencesEl.replaceChildren();
     referenceEmptyEl.hidden = false;
     scanPathControl.hidden = true;
-    referenceRenderStates = [];
+    contrastController.reset();
     responsePre.textContent = '{}';
     headerPre.textContent = '{}';
     sessionPre.textContent = '{}';
@@ -162,13 +210,6 @@ async function fetchPlane(resource, plane) {
   }
   return values;
 }
-function finiteRange(values) {
-  let min = Infinity, max = -Infinity;
-  for (const value of values) {
-    if (Number.isFinite(value)) { if (value < min) min = value; if (value > max) max = value; }
-  }
-  return max > min ? [min, max] : [0, 1];
-}
 function transposePlane(values, shape) {
   const rows = shape[0], cols = shape[1];
   const transposed = new Float32Array(values.length);
@@ -179,17 +220,82 @@ function transposePlane(values, shape) {
   }
   return {values: transposed, shape: [cols, rows]};
 }
-function drawPlane(canvas, values, shape) {
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+function sampledFiniteValues(values, maxSamples=120000) {
+  const samples = [];
+  const step = Math.max(1, Math.floor(values.length / maxSamples));
+  for (let index = 0; index < values.length; index += step) {
+    if (Number.isFinite(values[index])) samples.push(values[index]);
+  }
+  return samples;
+}
+function percentile(sorted, percent) {
+  if (sorted.length === 0) return NaN;
+  return sorted[clamp(Math.round(percent / 100 * (sorted.length - 1)), 0, sorted.length - 1)];
+}
+function autoRange(values) {
+  const sorted = sampledFiniteValues(values).sort((a, b) => a - b);
+  let min = percentile(sorted, 1);
+  let max = percentile(sorted, 99.5);
+  if (!(max > min)) {
+    const center = Number.isFinite(min) ? min : 0;
+    const delta = Math.max(1e-9, Math.abs(center) * 0.01 || 1);
+    min = center - delta;
+    max = center + delta;
+  }
+  return [min, max];
+}
+function rgbStops(t, stops) {
+  t = clamp(t, 0, 1);
+  for (let index = 0; index < stops.length - 1; index++) {
+    const left = stops[index], right = stops[index + 1];
+    if (t >= left[0] && t <= right[0]) {
+      const fraction = (t - left[0]) / Math.max(1e-12, right[0] - left[0]);
+      return [0, 1, 2].map(channel =>
+        Math.round(left[1][channel] + (right[1][channel] - left[1][channel]) * fraction)
+      );
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+function lutColor(t, lut) {
+  if (lut === 'fire') {
+    return [
+      clamp(Math.round(255 * 3 * t), 0, 255),
+      clamp(Math.round(255 * (3 * t - 1)), 0, 255),
+      clamp(Math.round(255 * (3 * t - 2)), 0, 255),
+    ];
+  }
+  const colorStops = {
+    hot: [[0,[0,0,0]],[0.33,[220,0,0]],[0.67,[255,220,0]],[1,[255,255,255]]],
+    viridis: [[0,[68,1,84]],[0.25,[59,82,139]],[0.5,[33,145,140]],[0.75,[94,201,98]],[1,[253,231,37]]],
+    magma: [[0,[0,0,4]],[0.25,[74,16,112]],[0.5,[181,54,122]],[0.75,[251,136,97]],[1,[252,253,191]]],
+    inferno: [[0,[0,0,4]],[0.25,[87,15,109]],[0.5,[187,55,84]],[0.75,[249,142,8]],[1,[252,255,164]]],
+    cividis: [[0,[0,32,76]],[0.25,[70,82,103]],[0.5,[118,118,107]],[0.75,[166,161,113]],[1,[255,233,69]]],
+    red: [[0,[0,0,0]],[0.35,[110,0,0]],[0.75,[255,45,25]],[1,[255,235,230]]],
+    yellow: [[0,[0,0,0]],[0.35,[105,80,0]],[0.75,[255,210,0]],[1,[255,255,220]]],
+    green: [[0,[0,0,0]],[0.35,[0,90,42]],[0.75,[0,220,85]],[1,[235,255,235]]],
+    cyan: [[0,[0,0,0]],[0.35,[0,77,102]],[0.75,[0,200,255]],[1,[230,255,255]]],
+    magenta: [[0,[0,0,0]],[0.35,[95,0,105]],[0.75,[255,0,220]],[1,[255,230,255]]],
+  };
+  if (colorStops[lut]) return rgbStops(t, colorStops[lut]);
+  const gray = Math.round(clamp(t, 0, 1) * 255);
+  return [gray, gray, gray];
+}
+function drawPlane(canvas, values, shape, display) {
   const rows = shape[0], cols = shape[1];
-  const [min, max] = finiteRange(values);
+  const min = display.min, max = display.max;
+  const span = Math.max(1e-12, max - min);
   const image = new ImageData(cols, rows);
   for (let i = 0; i < values.length; i++) {
-    const normalized = (values[i] - min) / (max - min);
-    const gray = Math.max(0, Math.min(255, Math.round(normalized * 255)));
+    const normalized = Number.isFinite(values[i]) ? clamp((values[i] - min) / span, 0, 1) : 0;
+    const color = lutColor(normalized, display.lut);
     const offset = i * 4;
-    image.data[offset] = gray;
-    image.data[offset + 1] = gray;
-    image.data[offset + 2] = gray;
+    image.data[offset] = color[0];
+    image.data[offset + 1] = color[1];
+    image.data[offset + 2] = color[2];
     image.data[offset + 3] = 255;
   }
   const offscreen = document.createElement('canvas');
@@ -242,22 +348,250 @@ function drawScanPath(canvas, sourceShape, scanPath, lineRoi) {
   }
   ctx.restore();
 }
-function drawReferenceState(state) {
-  drawPlane(state.canvas, state.values, state.displayShape);
-  if (showScanPath.checked) {
-    drawScanPath(state.canvas, state.sourceShape, state.scanPath, state.lineRoi);
+function drawChannelView(view) {
+  drawPlane(view.canvas, view.values, view.displayShape, view.display);
+  if (view.group === 'reference' && showScanPath.checked) {
+    drawScanPath(view.canvas, view.sourceShape, view.scanPath, view.lineRoi);
   }
 }
-function redrawReferenceChannels() {
-  referenceRenderStates.forEach(drawReferenceState);
+function histogramForValues(values, binCount=96) {
+  const sorted = sampledFiniteValues(values).sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  let domainMin = percentile(sorted, 0.1);
+  let domainMax = percentile(sorted, 99.9);
+  if (!(domainMax > domainMin)) {
+    const delta = Math.max(1e-9, Math.abs(domainMin) * 0.01 || 1);
+    domainMin -= delta;
+    domainMax += delta;
+  }
+  const bins = new Uint32Array(binCount);
+  const span = domainMax - domainMin;
+  for (const value of sorted) {
+    const index = clamp(Math.floor((value - domainMin) / span * binCount), 0, binCount - 1);
+    bins[index]++;
+  }
+  return {bins, domainMin, domainMax};
+}
+function createContrastController(elements, redrawView) {
+  let views = new Map();
+  let selectedId = null;
+  let histogram = null;
+  let dragHandle = null;
+
+  function selectedView() {
+    return selectedId ? views.get(selectedId) : null;
+  }
+  function numberText(value) {
+    const magnitude = Math.abs(value);
+    if ((magnitude !== 0 && magnitude < 0.001) || magnitude >= 100000) {
+      return value.toExponential(5);
+    }
+    return String(Number(value.toPrecision(8)));
+  }
+  function syncControls() {
+    const view = selectedView();
+    if (!view) return;
+    elements.lut.value = view.display.lut;
+    elements.min.value = numberText(view.display.min);
+    elements.max.value = numberText(view.display.max);
+    elements.title.textContent = `${view.label} display range`;
+  }
+  function closePopover() {
+    elements.popover.hidden = true;
+    dragHandle = null;
+  }
+  function positionPopover() {
+    const rect = elements.rangeButton.getBoundingClientRect();
+    const width = elements.popover.offsetWidth || 330;
+    const height = elements.popover.offsetHeight || 190;
+    const margin = 8;
+    const left = clamp(rect.left, margin, Math.max(margin, window.innerWidth - width - margin));
+    const below = rect.bottom + 6;
+    const top = below + height <= window.innerHeight - margin
+      ? below
+      : Math.max(margin, rect.top - height - 6);
+    elements.popover.style.left = `${Math.round(left)}px`;
+    elements.popover.style.top = `${Math.round(top)}px`;
+  }
+  function drawHistogram() {
+    const view = selectedView();
+    if (!view) return;
+    histogram = view.histogram || (view.histogram = histogramForValues(view.values));
+    if (!histogram) return;
+    const canvas = elements.histogram;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width, height = canvas.height;
+    const left = 6, right = width - 6, top = 6, bottom = height - 8;
+    const maxCount = Math.max(1, ...histogram.bins);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#64748b';
+    histogram.bins.forEach((count, index) => {
+      const x0 = left + index / histogram.bins.length * (right - left);
+      const x1 = left + (index + 1) / histogram.bins.length * (right - left);
+      const barHeight = count / maxCount * (bottom - top);
+      ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
+    });
+    const valueToX = value => left + clamp(
+      (value - histogram.domainMin) / (histogram.domainMax - histogram.domainMin),
+      0,
+      1,
+    ) * (right - left);
+    const drawHandle = (value, fill) => {
+      const x = valueToX(value);
+      ctx.strokeStyle = fill === '#ffffff' ? '#ffffff' : '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.fillRect(x - 4, top, 8, 9);
+      ctx.strokeRect(x - 4, top, 8, 9);
+    };
+    drawHandle(view.display.min, '#020617');
+    drawHandle(view.display.max, '#ffffff');
+  }
+  function openPopover() {
+    if (!selectedView()) return;
+    syncControls();
+    elements.popover.hidden = false;
+    positionPopover();
+    drawHistogram();
+  }
+  function applyNumericRange() {
+    const view = selectedView();
+    if (!view) return;
+    const min = Number(elements.min.value), max = Number(elements.max.value);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return;
+    view.display.min = min;
+    view.display.max = max;
+    redrawView(view);
+    drawHistogram();
+  }
+  function updateDrag(event) {
+    const view = selectedView();
+    if (!view || !histogram || !dragHandle) return;
+    const rect = elements.histogram.getBoundingClientRect();
+    const pixelX = (event.clientX - rect.left) * elements.histogram.width / rect.width;
+    const fraction = clamp((pixelX - 6) / (elements.histogram.width - 12), 0, 1);
+    const value = histogram.domainMin + fraction * (histogram.domainMax - histogram.domainMin);
+    const epsilon = Math.max(1e-12, (histogram.domainMax - histogram.domainMin) * 1e-6);
+    if (dragHandle === 'min') view.display.min = Math.min(value, view.display.max - epsilon);
+    else view.display.max = Math.max(value, view.display.min + epsilon);
+    syncControls();
+    redrawView(view);
+    drawHistogram();
+    event.preventDefault();
+  }
+
+  elements.target.addEventListener('change', () => {
+    selectedId = elements.target.value;
+    syncControls();
+    if (!elements.popover.hidden) {
+      positionPopover();
+      drawHistogram();
+    }
+  });
+  elements.lut.addEventListener('change', () => {
+    const view = selectedView();
+    if (!view) return;
+    view.display.lut = elements.lut.value;
+    redrawView(view);
+  });
+  elements.rangeButton.addEventListener('click', () => {
+    if (elements.popover.hidden) openPopover(); else closePopover();
+  });
+  elements.min.addEventListener('input', applyNumericRange);
+  elements.max.addEventListener('input', applyNumericRange);
+  elements.auto.addEventListener('click', () => {
+    const view = selectedView();
+    if (!view) return;
+    [view.display.min, view.display.max] = autoRange(view.values);
+    syncControls();
+    redrawView(view);
+    drawHistogram();
+  });
+  elements.histogram.addEventListener('pointerdown', event => {
+    const view = selectedView();
+    if (!view || !histogram) return;
+    const rect = elements.histogram.getBoundingClientRect();
+    const pixelX = (event.clientX - rect.left) * elements.histogram.width / rect.width;
+    const valueToX = value => 6 + clamp(
+      (value - histogram.domainMin) / (histogram.domainMax - histogram.domainMin),
+      0,
+      1,
+    ) * (elements.histogram.width - 12);
+    dragHandle = Math.abs(pixelX - valueToX(view.display.min))
+      <= Math.abs(pixelX - valueToX(view.display.max)) ? 'min' : 'max';
+    elements.histogram.setPointerCapture?.(event.pointerId);
+    updateDrag(event);
+  });
+  elements.histogram.addEventListener('pointermove', event => {
+    if (dragHandle) updateDrag(event);
+  });
+  elements.histogram.addEventListener('pointerup', event => {
+    elements.histogram.releasePointerCapture?.(event.pointerId);
+    dragHandle = null;
+  });
+  document.addEventListener('pointerdown', event => {
+    if (
+      !elements.popover.hidden &&
+      !elements.popover.contains(event.target) &&
+      event.target !== elements.rangeButton
+    ) closePopover();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closePopover();
+  });
+  window.addEventListener('resize', closePopover);
+
+  return {
+    setViews(nextViews) {
+      closePopover();
+      views = new Map();
+      elements.target.replaceChildren();
+      for (const view of nextViews) {
+        const [min, max] = autoRange(view.values);
+        view.display = {lut:'gray', min, max};
+        views.set(view.id, view);
+        const option = document.createElement('option');
+        option.value = view.id;
+        option.textContent = view.label;
+        elements.target.appendChild(option);
+      }
+      selectedId = nextViews[0]?.id || null;
+      elements.card.hidden = nextViews.length === 0;
+      if (selectedId) {
+        elements.target.value = selectedId;
+        syncControls();
+      }
+      views.forEach(redrawView);
+    },
+    reset() {
+      closePopover();
+      views.clear();
+      selectedId = null;
+      elements.target.replaceChildren();
+      elements.card.hidden = true;
+    },
+    redrawGroup(group) {
+      views.forEach(view => {
+        if (view.group === group) redrawView(view);
+      });
+    },
+  };
 }
 function axisSummary(plane) {
   return plane.axes.map(axis =>
     `dim${axis.arrayDimension} ${axis.name}: ${axis.size} × ${axis.step} ${axis.unit}`
   ).join(' · ');
 }
-async function renderResources(container, resources, plane, prefix, reference=null) {
+async function renderResources(container, resources, plane, group, prefix, reference=null) {
   container.replaceChildren();
+  const views = [];
   for (const resource of resources) {
     const card = document.createElement('article');
     card.className = 'card';
@@ -274,48 +608,68 @@ async function renderResources(container, resources, plane, prefix, reference=nu
     container.appendChild(card);
     const values = await fetchPlane(resource, plane);
     const displayPlane = transposePlane(values, plane.shape);
-    if (reference) {
-      const state = {
-        canvas,
-        values: displayPlane.values,
-        displayShape: displayPlane.shape,
-        sourceShape: plane.shape,
-        scanPath: reference.scanPath,
-        lineRoi: reference.lineRoi,
-      };
-      referenceRenderStates.push(state);
-      drawReferenceState(state);
-    } else {
-      drawPlane(canvas, displayPlane.values, displayPlane.shape);
-    }
+    views.push({
+      id: `${group}:${resource.index}`,
+      group,
+      label: `${prefix} ${resource.index}${resource.name ? ` · ${resource.name}` : ''}`,
+      canvas,
+      values: displayPlane.values,
+      displayShape: displayPlane.shape,
+      sourceShape: plane.shape,
+      scanPath: reference?.scanPath || null,
+      lineRoi: reference?.lineRoi || null,
+    });
   }
+  return views;
 }
 async function renderOpen(payload) {
   const session = await getJson(`${API}/sessions/${encodeURIComponent(payload.sessionId)}`);
   sessionPre.textContent = JSON.stringify(session, null, 2);
   headerPre.textContent = JSON.stringify(payload.header, null, 2);
   responsePre.textContent = JSON.stringify(payload, null, 2);
-  await renderResources(channelsEl, payload.channels, payload.plane, 'Channel');
+  const views = await renderResources(
+    channelsEl,
+    payload.channels,
+    payload.plane,
+    'source',
+    'Source channel',
+  );
   const reference = payload.reference;
   referenceEmptyEl.hidden = Boolean(reference);
-  referenceRenderStates = [];
   referencesEl.replaceChildren();
   if (reference) {
     const hasScanPath = scanPathPoints(reference.scanPath, reference.lineRoi).length > 0;
     scanPathControl.hidden = !hasScanPath;
     showScanPath.disabled = !hasScanPath;
-    await renderResources(
+    views.push(...await renderResources(
       referencesEl,
       reference.channels,
       reference.plane,
+      'reference',
       'Reference channel',
       reference,
-    );
+    ));
   } else {
     scanPathControl.hidden = true;
     showScanPath.disabled = true;
   }
+  contrastController.setViews(views);
 }
+const contrastController = createContrastController(
+  {
+    card: document.getElementById('contrastCard'),
+    target: document.getElementById('contrastTarget'),
+    lut: document.getElementById('contrastLut'),
+    rangeButton: document.getElementById('rangeBtn'),
+    popover: document.getElementById('rangePopover'),
+    title: document.getElementById('rangeTitle'),
+    histogram: document.getElementById('rangeHistogram'),
+    min: document.getElementById('rangeMin'),
+    max: document.getElementById('rangeMax'),
+    auto: document.getElementById('rangeAuto'),
+  },
+  drawChannelView,
+);
 async function runOpen() {
   setBusy(true); setStatus('Opening acquisition…');
   try {
@@ -339,7 +693,7 @@ async function runOpen() {
 }
 pickBtn.addEventListener('click', runOpen);
 closeBtn.addEventListener('click', deleteCurrentSession);
-showScanPath.addEventListener('change', redrawReferenceChannels);
+showScanPath.addEventListener('change', () => contrastController.redrawGroup('reference'));
 loadServerInfo();
 </script>
 </body>

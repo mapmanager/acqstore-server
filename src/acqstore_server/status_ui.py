@@ -20,6 +20,9 @@ from acqstore_server.routes import APP_NAME, APP_VERSION
 
 logger = get_logger('status_ui')
 
+# Public MkDocs site published via GitHub Pages from this private repository.
+PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'
+
 
 def _open_path_with_default_app(path: Path) -> None:
     """Open ``path`` with the OS default application (same idea as CloudScope).
@@ -54,7 +57,15 @@ def build_status_page(*, host: str, port: int) -> None:
     ui.colors(primary='#38bdf8')
 
     with ui.column().classes('w-full h-full p-3 gap-2'):
-        ui.label('AcqStore Server').classes('text-h6 text-primary')
+        with ui.row().classes('w-full items-center gap-2 flex-wrap'):
+            ui.label(APP_NAME).classes('text-h6 text-primary')
+            ui.label('|').classes('text-grey-6')
+            ui.label(f'v{APP_VERSION}').classes('text-body2 text-grey-5')
+            ui.label('|').classes('text-grey-6')
+            ui.button(
+                'Documentation',
+                on_click=lambda: webbrowser.open(PUBLIC_DOCS_URL),
+            ).props('flat dense color=primary')
 
         with ui.row().classes('gap-2 flex-wrap'):
             ui.button(
@@ -117,4 +128,4 @@ def build_status_page(*, host: str, port: int) -> None:
         ui.timer(0.5, _refresh_log)
 
     with ui.footer().classes('bg-grey-10 text-grey-4 q-px-md q-py-xs'):
-        ui.label(f'{APP_NAME} v{APP_VERSION}  ·  {host}:{port}').classes('text-caption')
+        ui.label(f'{host}:{port}').classes('text-caption')

@@ -4,6 +4,10 @@ When you start the packaged app, a small status window stays open while the loca
 
 ![AcqStore Server status window](../assets/acqstore-server-gui.png)
 
+## Header
+
+The top row shows **AcqStore Server**, the app version, and **Documentation** (opens the public MkDocs site at [https://mapmanager.github.io/acqstore-server/](https://mapmanager.github.io/acqstore-server/)).
+
 ## Buttons
 
 | Button | What it does |
@@ -14,7 +18,7 @@ When you start the packaged app, a small status window stays open while the loca
 | **Open log** | Opens the on-disk log file in your default app |
 | **Quit server** | Stops the app and the local server |
 
-The footer shows the app version and bind address (default `127.0.0.1:8767`).
+The footer shows the bind address (default `127.0.0.1:8767`).
 
 ## Log pane
 

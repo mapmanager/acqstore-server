@@ -1,7 +1,7 @@
 site_name: AcqStore Server
 site_description: Local desktop app and API v2 for opening acquisitions with AcqStore
 site_author: Robert Cudmore
-site_url: https://acqstore-server.pages.dev/
+site_url: https://mapmanager.github.io/acqstore-server/
 
 repo_name: mapmanager/acqstore-server
 repo_url: https://github.com/mapmanager/acqstore-server

@@ -2,8 +2,12 @@
 #
 # File: .github/workflows/docs.yml
 #
-# Build-only MkDocs validation. Does not deploy documentation or require
-# GitHub Pages.
+# MkDocs build and GitHub Pages deploy for AcqStore Server. Pull requests
+# build-only (strict validation); pushes to main and manual dispatch deploy
+# to https://mapmanager.github.io/acqstore-server/
+#
+# The docs group includes mkdocstrings, so this workflow still checks out the
+# sibling ``acqstore`` editable path dependency declared in pyproject.toml.
 
 name: Docs
 run-name: Docs • ${{ github.ref_name }} • ${{ github.event_name }}
@@ -20,10 +24,29 @@ on:
       - 'uv.lock'
       - '.python-version'
       - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'mkdocs.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.python-version'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
-  docs:
+  build:
     name: Build documentation
     runs-on: ubuntu-latest
 
@@ -67,3 +90,27 @@ jobs:
 
       - name: Build documentation
         run: uv run --no-sync mkdocs build --strict
+
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: acqstore-server/site
+
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
