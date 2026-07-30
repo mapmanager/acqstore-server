@@ -12,14 +12,18 @@ h1 { margin:0 0 6px; font-size:22px; color:var(--accent); }
 h2 { margin:0 0 10px; font-size:15px; }
 p { color:var(--muted); font-size:13px; }
 .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:16px 0; }
-label { display:grid; gap:5px; color:var(--muted); font-size:12px; }
-input { min-width:300px; padding:9px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
 button { padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#03131d; font-weight:700; cursor:pointer; }
 button:disabled { opacity:.45; cursor:default; }
 .status { min-height:20px; font-size:13px; }
 .status.ok { color:var(--ok); } .status.err { color:var(--err); }
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
 .card { border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:12px; overflow:hidden; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.section-heading h2 { margin:0; }
+.toggle { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer; }
+.toggle input { margin:0; }
+summary { color:var(--text); cursor:pointer; font-size:15px; font-weight:700; }
+details[open] summary { margin-bottom:10px; }
 .canvas-wrap { overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:8px; background:#020617; }
 canvas { display:block; image-rendering:auto; }
 pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px; background:#020617; font-size:11px; }
@@ -30,55 +34,57 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
 <h1>AcqStore Server API v2 demo</h1>
 <p>Generic JavaScript client for <code>/api/v2</code>.</p>
 <div class="controls">
-  <button id="pickBtn" type="button">Pick and open</button>
-  <label>Server-accessible path
-    <input id="pathInput" type="text" placeholder="/absolute/path/to/file.oir">
-  </label>
-  <button id="openBtn" type="button">Open path</button>
+  <button id="pickBtn" type="button">Open File</button>
   <button id="closeBtn" type="button" disabled>Delete session</button>
 </div>
 <div id="status" class="status"></div>
 <p id="serverInfo" class="meta">Checking server…</p>
 <section class="card">
-  <h2>Session</h2>
-  <pre id="sessionPre">{}</pre>
+  <h2>Source channels</h2>
+  <div id="channels" class="grid"></div>
+</section>
+<section class="card" style="margin-top:12px">
+  <div class="section-heading">
+    <h2>Reference channels</h2>
+    <label id="scanPathControl" class="toggle" hidden>
+      <input id="showScanPath" type="checkbox" checked>
+      Show scan path
+    </label>
+  </div>
+  <div id="references" class="grid"></div>
+  <p id="referenceEmpty">No reference image loaded.</p>
 </section>
 <section class="card" style="margin-top:12px">
   <h2>AcqStore header</h2>
   <pre id="headerPre">{}</pre>
 </section>
-<section class="card" style="margin-top:12px">
-  <h2>Source channels</h2>
-  <div id="channels" class="grid"></div>
-</section>
-<section class="card" style="margin-top:12px">
-  <h2>Reference channels</h2>
-  <div id="references" class="grid"></div>
-  <p id="referenceEmpty">No reference image loaded.</p>
-</section>
-<section class="card" style="margin-top:12px">
-  <h2>Open response</h2>
+<details class="card" style="margin-top:12px">
+  <summary>Session</summary>
+  <pre id="sessionPre">{}</pre>
+</details>
+<details class="card" style="margin-top:12px">
+  <summary>Open response</summary>
   <pre id="responsePre">{}</pre>
-</section>
+</details>
 <script>
 const API = '/api/v2';
 const pickBtn = document.getElementById('pickBtn');
-const openBtn = document.getElementById('openBtn');
 const closeBtn = document.getElementById('closeBtn');
-const pathInput = document.getElementById('pathInput');
 const statusEl = document.getElementById('status');
 const channelsEl = document.getElementById('channels');
 const referencesEl = document.getElementById('references');
 const referenceEmptyEl = document.getElementById('referenceEmpty');
+const scanPathControl = document.getElementById('scanPathControl');
+const showScanPath = document.getElementById('showScanPath');
 const responsePre = document.getElementById('responsePre');
 const headerPre = document.getElementById('headerPre');
 const sessionPre = document.getElementById('sessionPre');
 const serverInfoEl = document.getElementById('serverInfo');
 let currentSessionId = null;
+let referenceRenderStates = [];
 
 function setBusy(busy) {
   pickBtn.disabled = busy;
-  openBtn.disabled = busy;
   closeBtn.disabled = busy || !currentSessionId;
 }
 function setStatus(message, kind='') {
@@ -114,8 +120,7 @@ async function loadServerInfo() {
     ]);
     serverInfoEl.textContent =
       `Server ${health.apiVersion} ready · ` +
-      `Allowed formats: ${capabilities.allowedImportExtensions.join(', ')} · ` +
-      `session TTL ${capabilities.sessionTtlSeconds}s · ${capabilities.binary.encoding}`;
+      `Allowed formats: ${capabilities.allowedImportExtensions.join(', ')}`;
   } catch (error) {
     serverInfoEl.textContent = `Server unavailable: ${error}`;
   }
@@ -130,6 +135,8 @@ async function deleteCurrentSession() {
     channelsEl.replaceChildren();
     referencesEl.replaceChildren();
     referenceEmptyEl.hidden = false;
+    scanPathControl.hidden = true;
+    referenceRenderStates = [];
     responsePre.textContent = '{}';
     headerPre.textContent = '{}';
     sessionPre.textContent = '{}';
@@ -193,12 +200,63 @@ function drawPlane(canvas, values, shape) {
   canvas.height = Math.max(1, Math.round(rows * scale));
   canvas.getContext('2d').drawImage(offscreen, 0, 0, canvas.width, canvas.height);
 }
+function scanPathPoints(scanPath, lineRoi) {
+  if (
+    scanPath &&
+    Array.isArray(scanPath.x) &&
+    Array.isArray(scanPath.y) &&
+    scanPath.x.length > 0 &&
+    scanPath.x.length === scanPath.y.length
+  ) {
+    return scanPath.x.map((x, index) => [x, scanPath.y[index]]);
+  }
+  if (Array.isArray(lineRoi) && lineRoi.length === 4) {
+    return [[lineRoi[0], lineRoi[1]], [lineRoi[2], lineRoi[3]]];
+  }
+  return [];
+}
+function drawScanPath(canvas, sourceShape, scanPath, lineRoi) {
+  const points = scanPathPoints(scanPath, lineRoi);
+  if (points.length === 0) return;
+
+  // API reference coords are x=dim1 and y=dim0. The displayed plane is transposed.
+  const scaleX = canvas.width / sourceShape[0];
+  const scaleY = canvas.height / sourceShape[1];
+  const toCanvas = ([x, y]) => [y * scaleX, x * scaleY];
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.strokeStyle = '#fb7185';
+  ctx.fillStyle = '#fb7185';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const [x, y] = toCanvas(point);
+    if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  for (const point of points) {
+    const [x, y] = toCanvas(point);
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawReferenceState(state) {
+  drawPlane(state.canvas, state.values, state.displayShape);
+  if (showScanPath.checked) {
+    drawScanPath(state.canvas, state.sourceShape, state.scanPath, state.lineRoi);
+  }
+}
+function redrawReferenceChannels() {
+  referenceRenderStates.forEach(drawReferenceState);
+}
 function axisSummary(plane) {
   return plane.axes.map(axis =>
     `dim${axis.arrayDimension} ${axis.name}: ${axis.size} × ${axis.step} ${axis.unit}`
   ).join(' · ');
 }
-async function renderResources(container, resources, plane, prefix) {
+async function renderResources(container, resources, plane, prefix, reference=null) {
   container.replaceChildren();
   for (const resource of resources) {
     const card = document.createElement('article');
@@ -216,7 +274,20 @@ async function renderResources(container, resources, plane, prefix) {
     container.appendChild(card);
     const values = await fetchPlane(resource, plane);
     const displayPlane = transposePlane(values, plane.shape);
-    drawPlane(canvas, displayPlane.values, displayPlane.shape);
+    if (reference) {
+      const state = {
+        canvas,
+        values: displayPlane.values,
+        displayShape: displayPlane.shape,
+        sourceShape: plane.shape,
+        scanPath: reference.scanPath,
+        lineRoi: reference.lineRoi,
+      };
+      referenceRenderStates.push(state);
+      drawReferenceState(state);
+    } else {
+      drawPlane(canvas, displayPlane.values, displayPlane.shape);
+    }
   }
 }
 async function renderOpen(payload) {
@@ -227,17 +298,36 @@ async function renderOpen(payload) {
   await renderResources(channelsEl, payload.channels, payload.plane, 'Channel');
   const reference = payload.reference;
   referenceEmptyEl.hidden = Boolean(reference);
+  referenceRenderStates = [];
   referencesEl.replaceChildren();
   if (reference) {
-    await renderResources(referencesEl, reference.channels, reference.plane, 'Reference channel');
+    const hasScanPath = scanPathPoints(reference.scanPath, reference.lineRoi).length > 0;
+    scanPathControl.hidden = !hasScanPath;
+    showScanPath.disabled = !hasScanPath;
+    await renderResources(
+      referencesEl,
+      reference.channels,
+      reference.plane,
+      'Reference channel',
+      reference,
+    );
+  } else {
+    scanPathControl.hidden = true;
+    showScanPath.disabled = true;
   }
 }
-async function runOpen(kind) {
+async function runOpen() {
   setBusy(true); setStatus('Opening acquisition…');
   try {
-    const payload = kind === 'pick'
-      ? await jsonRequest(`${API}/pick-and-open`, {})
-      : await jsonRequest(`${API}/open`, {path:pathInput.value});
+    const previousSessionId = currentSessionId;
+    const payload = await jsonRequest(`${API}/pick-and-open`, {});
+    if (previousSessionId && previousSessionId !== payload.sessionId) {
+      try {
+        await getJson(`${API}/sessions/${encodeURIComponent(previousSessionId)}`, {method:'DELETE'});
+      } catch (error) {
+        console.warn(`Could not delete previous session ${previousSessionId}:`, error);
+      }
+    }
     currentSessionId = payload.sessionId;
     await renderOpen(payload);
     setStatus(`Loaded ${payload.source.name}: ${payload.channels.length} channel(s).`, 'ok');
@@ -247,9 +337,9 @@ async function runOpen(kind) {
     setBusy(false);
   }
 }
-pickBtn.addEventListener('click', () => runOpen('pick'));
-openBtn.addEventListener('click', () => runOpen('path'));
+pickBtn.addEventListener('click', runOpen);
 closeBtn.addEventListener('click', deleteCurrentSession);
+showScanPath.addEventListener('change', redrawReferenceChannels);
 loadServerInfo();
 </script>
 </body>

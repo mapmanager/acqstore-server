@@ -20,7 +20,6 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
         '`${API}/health`',
         '`${API}/capabilities`',
         '`${API}/pick-and-open`',
-        '`${API}/open`',
         '`${API}/sessions/${encodeURIComponent(payload.sessionId)}`',
         "method:'DELETE'",
         'dataUrl',
@@ -36,6 +35,17 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     assert 'const displayPlane = transposePlane(values, plane.shape)' in html
     assert 'drawPlane(canvas, displayPlane.values, displayPlane.shape)' in html
     assert 'array dimension 1 horizontally' not in html
+    assert '>Open File</button>' in html
+    assert 'Server-accessible path' not in html
+    assert '>Open path</button>' not in html
+    assert 'session TTL' not in html
+    assert 'capabilities.binary.encoding' not in html
+    assert '<summary>Session</summary>' in html
+    assert '<summary>Open response</summary>' in html
+    assert 'id="showScanPath" type="checkbox" checked' in html
+    assert 'function drawScanPath(canvas, sourceShape, scanPath, lineRoi)' in html
+    assert 'scanPathPoints(reference.scanPath, reference.lineRoi)' in html
+    assert "showScanPath.addEventListener('change', redrawReferenceChannels)" in html
 
 
 def test_v2_demo_is_served_at_versioned_path() -> None:
