@@ -16,22 +16,23 @@ It requires a running AcqStore Server, either the packaged desktop application o
 
 ## Lifecycle exercised by the demo
 
-The demo intentionally exercises the complete baseline client lifecycle:
+The demo intentionally exercises the open → display → replace-session baseline:
 
-1. `GET /api/v2/health`
-2. `GET /api/v2/capabilities`
-3. `POST /api/v2/pick-and-open` (**Open File** in the UI)
-4. `GET /api/v2/sessions/{sessionId}`
-5. fetch each source `channels[].dataUrl`
-6. fetch each optional `reference.channels[].dataUrl`
-7. decode raw little-endian float32 data
-8. validate `byteLength` and `plane.shape`
-9. transpose immediately before canvas display
-10. optional reference `scanPath` / `lineRoi` overlay (display-only)
-11. display-only contrast (LUT + intensity range) on stored float planes
-12. interactive per-image navigation (wheel/pinch zoom, H/V axis-zoom drag, Shift+pan, double-click home; unequal planes stretch-fill the wrap)
-13. optional per-group **Composite** (source and reference independently): ch0 green + ch1 magenta from each channel’s range
-14. `DELETE /api/v2/sessions/{sessionId}` (explicit **Delete session**, or automatically when opening a new file)
+1. `POST /api/v2/pick-and-open` (**Open File** in the UI)
+2. `GET /api/v2/sessions/{sessionId}`
+3. fetch each source `channels[].dataUrl`
+4. fetch each optional `reference.channels[].dataUrl`
+5. decode raw little-endian float32 data
+6. validate `byteLength` and `plane.shape`
+7. transpose immediately before canvas display
+8. optional reference `scanPath` / `lineRoi` overlay (display-only)
+9. display-only contrast (LUT + intensity range) on stored float planes
+10. interactive per-image navigation (wheel/pinch zoom; square images: drag a square region to zoom; non-square: H/V axis-zoom drag; Shift+pan; double-click home; unequal planes stretch-fill the wrap)
+11. optional per-group **Composite** (source and reference independently): channel 0 green + channel 1 magenta from each channel’s range
+12. optional per-pane **Axes** ticks in physical units from `plane.axes` (adaptive major/minor; Y is 0 at bottom after display transpose)
+13. `DELETE /api/v2/sessions/{sessionId}` automatically when opening a new file (the UI no longer has a Delete session button)
+
+Clients should still call `GET /api/v2/health` and `GET /api/v2/capabilities` when building their own apps (formats, binary encoding, session TTL). The maintained demo no longer surfaces those responses in the page chrome.
 
 The maintained demo UI does not expose `POST /api/v2/open`. That path remains part of the HTTP API for other clients (see the [API reference](api.md) and [Build a client](../llm/build-a-client.md)).
 

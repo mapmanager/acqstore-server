@@ -1,6 +1,6 @@
 # Built-in demo
 
-The app ships a small HTML/JavaScript demo. With the app running, open it from the status window (**Open demo**) or go to:
+The app ships an HTML/JavaScript demo. With the app running, open it from the main window (**Open demo**) or go to:
 
 ```text
 http://127.0.0.1:8767/demo/v2/
@@ -8,38 +8,36 @@ http://127.0.0.1:8767/demo/v2/
 
 ![AcqStore Server demo page](../assets/demo-app-html.png)
 
-The demo opens an acquisition and shows source and optional reference images, with display-only tools for contrast, composite color, and navigation.
+The demo opens an acquisition and shows source and optional reference images, with display-only tools for contrast, composite color, axes, and navigation.
 
 ## Open a file
 
 1. Click **Open File** (native file dialog on the machine running the app).
-2. Wait for the status line (for example `Loaded …: 2 channel(s).`).
-3. The page shows **Contrast** controls (when channels are loaded), then a split image area: **Source channels** on top and **Reference channels** below when a reference attachment exists.
+2. Wait for the status line next to the button (for example `Loaded …: 2 channel(s).`).
+3. The page shows **Source channels** on top and **Reference channels** below when a reference attachment exists. Each pane includes contrast controls for its channels.
 4. Opening another file replaces the previous demo session and loads the new one.
-5. **Delete session** clears the current session when you are done.
 
-Supported file types come from AcqStore at runtime. Prefer `GET /api/v2/capabilities` over hard-coding extensions (typical examples include `.tif`, `.oir`, `.czi`, `.nd2`, and OME-Zarr variants).
-
-The line under the buttons shows API readiness and allowed formats.
+Supported file types come from AcqStore at runtime. Prefer `GET /api/v2/capabilities` over hard-coding extensions (typical examples include `.tif`, `.oir`, `.czi`, `.nd2`, and OME-Zarr variants). The demo UI does not list formats; use capabilities (or the OpenAPI docs) when you need the allowed list.
 
 ## Contrast
 
-After a file loads, a **Contrast** card appears above the images:
+Inside each pane (**Source channels** and **Reference channels**), a contrast card lists one row per channel:
 
 | Control | Purpose |
 |---|---|
-| **Channel** | Which channel the LUT and range apply to (every source and reference channel is listed). |
-| **Color LUT** | False-color map when viewing individual channels (ignored while **Composite** is on). |
-| **Range…** | Opens a popover with a log-scaled histogram, min/max fields, and **Auto**. |
+| Channel label | Zero-based name (`Channel 0`, `Channel 1`, …) |
+| LUT dropdown | False-color map when viewing individual channels (ignored while **Composite** is on) |
+| **Range…** | Opens a popover with a log-scaled histogram, min/max fields, and **Auto** |
 
 Contrast is **display-only**. Changing LUT or range does not change the underlying image data or HTTP responses.
 
 ## Image layout
 
 - **Source channels** and **Reference channels** appear in separate panes.
-- When a reference image is present, drag the horizontal divider between the panes to resize them; the images grow and shrink with the panes.
+- When a reference image is present, drag the horizontal divider between the panes to resize them; either pane can collapse to zero height (heading and images clip). Image canvases use `min-height: 0` so the flex layout can shrink fully. The combined source/reference viewport is sized to `min(85vh, 960px)` so images get most of the window; scroll for the JSON sections below.
 - Unequal-aspect planes (typical kymographs) initially **stretch to fill** the view width and height. Square planes keep an aspect-preserving fit.
 - On the reference pane, **Show scan path** (on by default when a path exists) draws the scan-path overlay.
+- **Axes** (per pane) draws adaptive major/minor ticks in physical units from `plane.axes` (not pixel indices). After the display transpose, X runs left→right from 0 and Y is plot-style: **0 at the bottom**, max at the top.
 
 ## Composite
 
@@ -49,7 +47,7 @@ When a pane has two channels, a **Composite** checkbox appears in that pane’s 
 - **On**: that pane shows a single RGB image:
   - Channel 0 → **green**
   - Channel 1 → **magenta**
-  - Each channel still uses its own intensity **min/max** from Contrast / Range / Auto.
+  - Each channel still uses its own intensity **min/max** from that channel’s Range / Auto.
   - Color LUT is ignored while compositing.
 - Composite works for two channels only; it is not implemented for three or more.
 
@@ -60,7 +58,8 @@ You can navigate each image independently:
 | Gesture | Action |
 |---|---|
 | Mouse wheel or pinch | Zoom toward the cursor |
-| Drag mostly left/right or up/down | Axis-zoom: select a horizontal or vertical span and zoom that axis |
+| Drag on a **square** image (equal pixel width and height) | Square region zoom: drag out a square and release to zoom to that region |
+| Drag on a **non-square** image | Axis-zoom: select a horizontal or vertical span and zoom that axis |
 | **Shift** + drag | Pan |
 | Double-click | Reset to the home fit for that image |
 

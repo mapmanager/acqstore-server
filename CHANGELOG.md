@@ -10,29 +10,34 @@ This project uses a simple changelog format inspired by Keep a Changelog. During
 
 Added:
 
-- Status-window header: **AcqStore Server** · version · **Documentation** (opens the public MkDocs site).
+- Main-window header: app name · version · **Documentation** (opens the public documentation site).
 
 Changed:
 
-- Status-window footer shows the bind address (`host:port`) only; version moved into the header.
+- Main-window footer shows the bind address (`host:port`) only; version moved into the header.
 
 ### Demo (`/demo/v2/`)
 
 Added:
 
-- Shared **Contrast** controls for source and reference channels: full LUT set, Range popover with log-scaled histogram, min/max, and Auto (display-only).
+- Per-pane **Contrast** cards (one row per channel with Color LUT and Range…); shared Range popover with log-scaled histogram, min/max, and Auto (display-only).
 - Reference **Show scan path** overlay (polyline + points from `scanPath`, with `lineRoi` fallback).
 - Collapsible **Session** and **Open response** sections.
-- Per-canvas image viewport: mouse-wheel / pinch zoom, horizontal/vertical **axis-zoom** drag, **Shift+drag** pan, double-click reset (independent per channel for now).
+- Per-canvas image viewport: mouse-wheel / pinch zoom; **square** images use drag square-region zoom; **non-square** images use horizontal/vertical **axis-zoom** drag; **Shift+drag** pan; double-click reset (independent per channel for now).
 - Horizontal drag splitter between source and reference panes (enabled when a reference image is present); canvases flex-fill the pane height.
-- Independent **Composite** checkboxes for source and for reference (ch0 green + ch1 magenta from each channel’s range; LUT ignored while compositing).
+- Independent **Composite** checkboxes for source and for reference (channel 0 green + channel 1 magenta from each channel’s range; LUT ignored while compositing).
+- Per-pane **Axes** checkbox: tick labels in physical units from `plane.axes`.
 
 Changed:
 
 - Renamed **Pick and open** to **Open File**; removed the server-accessible path text box and **Open path** button from the demo UI.
-- Successful **Open File** deletes the previous demo session before showing the new one; **Delete session** remains for explicit cleanup.
-- Status line shows API readiness and allowed formats only (no session TTL or `raw-f32-le` chrome).
+- Successful **Open File** deletes the previous demo session before showing the new one; removed the **Delete session** button.
+- Removed subtitle, server-readiness / allowed-formats status line, and long per-card axis meta strings (formats stay in docs / `GET /api/v2/capabilities`).
+- Compact top chrome: **Loaded …** sits on the same row as **Open File**; channel labels are zero-based (`Channel 0`, …) without vendor `CH1`/`CH2` names.
+- Composite / Show scan path / Axes toggles sit left of the pane heading (not right-justified).
+- Canvas wrap `min-height` is `0` so the source/reference splitter can collapse either pane fully.
 - Page order: source channels → reference channels → AcqStore header → open response → session (header / open / session are collapsed `<details>`).
+- Contrast no longer uses a global channel dropdown; LUT/Range controls live inside each source and reference pane.
 - Plane rendering uses precomputed 256-entry LUT tables for faster redraws.
 - Initial view for non-square (kymograph) planes stretches to fill the viewport width and height (`scaleX` / `scaleY`); square planes keep aspect-preserving contain.
 
@@ -46,5 +51,7 @@ Added:
 Changed:
 
 - Public docs URL is `https://mapmanager.github.io/acqstore-server/` (`mkdocs.yml`, README, status UI).
-- User and reference demo docs updated for the current demo UI (Open File, contrast, composite, navigation, split panes, collapsed JSON) and status-window header; wording tightened for end users (no implementation jargon in user pages).
+- User docs refer to the **main window** (not “status window”); home page describes a desktop app (not a “small” app).
+- Live Swagger / OpenAPI links live on the [Main window](docs/users/gui.md) page (removed from the docs home page).
+- User and reference demo docs updated for the current demo UI; wording tightened for end users.
 - Refreshed docs screenshots: `docs/assets/demo-app-html.png`, `docs/assets/acqstore-server-gui.png`.

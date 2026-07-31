@@ -1,8 +1,8 @@
-# Status window
+# Main window
 
-When you start the app, a status window stays open while the local server is running.
+When you start the app, a main window stays open while the local server is running.
 
-![AcqStore Server status window](../assets/acqstore-server-gui.png)
+![AcqStore Server main window](../assets/acqstore-server-gui.png)
 
 ## Header
 
@@ -24,4 +24,9 @@ The footer shows the bind address (default `127.0.0.1:8767`).
 
 The lower area is a live view of the server log. Use it when a file fails to open or a client request looks wrong.
 
-Machine-readable OpenAPI is also available at `http://127.0.0.1:8767/openapi.json` while the app is running.
+## Live API contract
+
+While the app is running:
+
+- Interactive Swagger: `http://127.0.0.1:8767/docs`
+- Machine-readable OpenAPI: `http://127.0.0.1:8767/openapi.json`

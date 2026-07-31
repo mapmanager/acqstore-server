@@ -33,10 +33,10 @@ Contact Robert Cudmore ([robert.cudmore@gmail.com](mailto:robert.cudmore@gmail.c
 
 ## After it starts
 
-The status window appears and the local API listens on:
+The main window appears and the local API listens on:
 
 ```text
 http://127.0.0.1:8767
 ```
 
-Next: [Status window](gui.md) and [Built-in demo](demo.md).
+Next: [Main window](gui.md) and [Built-in demo](demo.md).
