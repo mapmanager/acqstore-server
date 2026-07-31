@@ -271,14 +271,10 @@ decode_failed
 
 ## Maintained reference client
 
-The maintained v2 client is:
-
-```text
-src/acqstore_server/static/demo/v2/index.html
-```
-
-When the server is running:
+The maintained v2 client is the built-in demo. When the server is running:
 
 ```text
 http://127.0.0.1:8767/demo/v2/
 ```
+
+Match its **behavior** from the live page and from [Demo](demo.md); application source code is not required.

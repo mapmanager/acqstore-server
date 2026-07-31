@@ -304,16 +304,10 @@ See [API v2 errors](errors.md) for the stable codes.
 
 ## Reference implementation
 
-The maintained working client is:
-
-```text
-src/acqstore_server/static/demo/v2/index.html
-```
-
-When the server is running:
+The maintained working client is the built-in demo. When the server is running:
 
 ```text
 http://127.0.0.1:8767/demo/v2/
 ```
 
-Use the demo to verify the server and compare behavior while developing another client.
+Use that page to verify the server and compare **behavior** while developing another client. Application source code is not required.

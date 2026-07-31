@@ -19,7 +19,7 @@ http://127.0.0.1:8767
 1. [JavaScript client guide](javascript-client.md)
 2. [API contract](api.md)
 3. [Reference demo](demo.md)
-4. runtime OpenAPI at `http://127.0.0.1:8767/openapi.json`
+4. Runtime OpenAPI at `http://127.0.0.1:8767/openapi.json` **when you can reach the user’s loopback**; otherwise stay on the public docs site and skip live OpenAPI.
 
 ## Minimum client behavior
 

@@ -1,18 +1,12 @@
 # API v2 JavaScript demo
 
-The maintained browser demo is the reference thin client for API v2:
+The maintained browser demo is the reference thin client for API v2. While AcqStore Server is running, open:
 
 ```text
 http://127.0.0.1:8767/demo/v2/
 ```
 
-Its source is:
-
-```text
-src/acqstore_server/static/demo/v2/index.html
-```
-
-It requires a running AcqStore Server, either the packaged desktop application or a server started from source.
+It requires the packaged desktop application (or an equivalent running server). Use the live page as a **behavior** reference when building another client; you do not need application source code.
 
 ## Lifecycle exercised by the demo
 

@@ -3,10 +3,6 @@ site_description: Local desktop app and API v2 for opening acquisitions with Acq
 site_author: Robert Cudmore
 site_url: https://mapmanager.github.io/acqstore-server/
 
-repo_name: mapmanager/acqstore-server
-repo_url: https://github.com/mapmanager/acqstore-server
-edit_uri: edit/main/docs/
-
 theme:
   name: material
   features:
@@ -70,7 +66,7 @@ nav:
   - Build a client:
       - llm/index.md
       - Build a first client: llm/build-a-client.md
-      - Cursor prompt: llm/prompt.md
+      - LLM prompt: llm/prompt.md
   - Reference (details):
       - reference/index.md
       - API contract: reference/api.md
