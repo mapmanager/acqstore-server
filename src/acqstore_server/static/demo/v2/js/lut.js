@@ -1,6 +1,11 @@
 // LUT color tables and lookup for channel display.
 import {clamp} from './util.js';
 
+const LUT_OPTION_LABELS = {
+  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green',
+  fire:'Fire', hot:'Hot', viridis:'Viridis', magma:'Magma', inferno:'Inferno', cividis:'Cividis',
+};
+
 function rgbStops(t, stops) {
   t = clamp(t, 0, 1);
   for (let index = 0; index < stops.length - 1; index++) {
@@ -54,4 +59,27 @@ function buildLutTables() {
 }
 const LUT_TABLES = buildLutTables();
 
-export {LUT_TABLES};
+/** Sample RGB from a named LUT at normalized intensity t in [0, 1]. */
+function sampleLutRgb(lutName, t) {
+  const lut = LUT_TABLES[lutName] || LUT_TABLES.gray;
+  const lutOffset = Math.round(clamp(t, 0, 1) * 255) * 3;
+  return [lut[lutOffset], lut[lutOffset + 1], lut[lutOffset + 2]];
+}
+
+function defaultLutForChannelIndex(channelIndex) {
+  if (channelIndex === 0) return 'green';
+  if (channelIndex === 1) return 'magenta';
+  return 'gray';
+}
+
+function lutDisplayLabel(lutName) {
+  return LUT_OPTION_LABELS[lutName] || lutName || 'Gray';
+}
+
+export {
+  LUT_TABLES,
+  LUT_OPTION_LABELS,
+  sampleLutRgb,
+  defaultLutForChannelIndex,
+  lutDisplayLabel,
+};

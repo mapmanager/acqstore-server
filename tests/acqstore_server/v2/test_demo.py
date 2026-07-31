@@ -101,7 +101,14 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     assert 'id="closeBtn"' not in index_html
     assert 'id="serverInfo"' not in index_html
     assert "label: `Channel ${resource.index}`" in sources
-    assert 'Channel ${first.channelIndex} (green)' in sources
+    assert 'Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)})' in sources
+    assert 'function sampleLutRgb(lutName, t)' in sources
+    assert 'function defaultLutForChannelIndex(channelIndex)' in sources
+    assert "return 'green'" in sources
+    assert "return 'magenta'" in sources
+    assert 'ca[0] + cb[0]' in sources
+    assert 'ignores per-channel LUT' not in sources
+    assert 'Fixed v1 composite: channel 0' not in sources
     assert '<summary>AcqStore header</summary>' in index_html
     assert index_html.index('<summary>Open response</summary>') < index_html.index('<summary>Session</summary>')
     assert 'array dimension 1 horizontally' not in sources

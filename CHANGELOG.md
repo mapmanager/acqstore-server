@@ -33,7 +33,7 @@ Changed:
 - Collapsible **Session** and **Open response** sections.
 - Per-canvas image viewport: mouse-wheel / pinch zoom; **square** images use drag square-region zoom; **non-square** images use horizontal/vertical **axis-zoom** drag; **Shift+drag** pan; double-click reset (independent per channel for now).
 - Horizontal drag splitter between source and reference panes (enabled when a reference image is present); canvases flex-fill the pane height.
-- Independent **Composite** checkboxes for source and for reference (channel 0 green + channel 1 magenta from each channel’s range; LUT ignored while compositing).
+- Independent **Composite** checkboxes for source and for reference: each channel uses its LUT + range, then RGB values are added (defaults channel 0 green / channel 1 magenta).
 - Per-pane **Axes** checkbox: tick labels in physical units from `plane.axes`.
 
 Changed:

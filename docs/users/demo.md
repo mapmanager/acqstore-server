@@ -26,7 +26,7 @@ Inside each pane (**Source channels** and **Reference channels**), a contrast ca
 | Control | Purpose |
 |---|---|
 | Channel label | Zero-based name (`Channel 0`, `Channel 1`, …) |
-| LUT dropdown | False-color map when viewing individual channels (ignored while **Composite** is on) |
+| LUT dropdown | False-color map for that channel (also used when **Composite** is on) |
 | **Range…** | Opens a popover with a log-scaled histogram, min/max fields, and **Auto** |
 
 Contrast is **display-only**. Changing LUT or range does not change the underlying image data or HTTP responses.
@@ -44,11 +44,10 @@ Contrast is **display-only**. Changing LUT or range does not change the underlyi
 When a pane has two channels, a **Composite** checkbox appears in that pane’s heading (one control for source, one for reference):
 
 - **Off** (default): one image per channel. Color LUT applies.
-- **On**: that pane shows a single RGB image:
-  - Channel 0 → **green**
-  - Channel 1 → **magenta**
-  - Each channel still uses its own intensity **min/max** from that channel’s Range / Auto.
-  - Color LUT is ignored while compositing.
+- **On**: that pane shows a single RGB image built like a fluorescence overlay:
+  - Each channel is normalized with its own intensity **min/max** (Range / Auto).
+  - Each channel is colorized with its own **LUT**, then the RGB values are **added** and clamped to 255.
+  - Defaults on open: channel 0 → **green**, channel 1 → **magenta** (changeable in the contrast rows).
 - Composite works for two channels only; it is not implemented for three or more.
 
 ## Navigation

@@ -2,6 +2,7 @@
 import {clamp} from './util.js';
 import {sampledFiniteValues, percentile, autoRange} from './plane.js';
 import {redrawGroupDisplay} from './layout.js';
+import {LUT_OPTION_LABELS, defaultLutForChannelIndex} from './lut.js';
 
 function histogramForValues(values, binCount=96) {
   const sorted = sampledFiniteValues(values).sort((a, b) => a - b);
@@ -21,10 +22,6 @@ function histogramForValues(values, binCount=96) {
   }
   return {bins, domainMin, domainMax};
 }
-const LUT_OPTION_LABELS = {
-  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green',
-  fire:'Fire', hot:'Hot', viridis:'Viridis', magma:'Magma', inferno:'Inferno', cividis:'Cividis',
-};
 function createContrastController(elements, redrawView) {
   let views = new Map();
   let selectedId = null;
@@ -248,7 +245,7 @@ function createContrastController(elements, redrawView) {
       views = new Map();
       for (const view of nextViews) {
         const [min, max] = autoRange(view.values);
-        view.display = {lut:'gray', min, max};
+        view.display = {lut: defaultLutForChannelIndex(view.channelIndex), min, max};
         views.set(view.id, view);
       }
       mountContrastPanels();
@@ -268,4 +265,4 @@ function createContrastController(elements, redrawView) {
   };
 }
 
-export {LUT_OPTION_LABELS, createContrastController};
+export {createContrastController};

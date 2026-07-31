@@ -17,6 +17,7 @@ import {createImageViewport} from './viewport.js';
 import {drawScanPathOverlay} from './scan-path.js';
 import {drawAxisLabels} from './axes.js';
 import {renderPlaneBitmap, renderCompositeBitmap} from './render.js';
+import {lutDisplayLabel} from './lut.js';
 
 function destroyActiveViews() {
   state.activeViews.forEach(view => view.viewport?.destroy());
@@ -91,7 +92,8 @@ function mountGroupLayout(group) {
     const meta = document.createElement('p');
     meta.className = 'meta';
     meta.textContent =
-      `Channel ${first.channelIndex} (green) · Channel ${second.channelIndex} (magenta)`;
+      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
+      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
     const wrap = document.createElement('div');
     wrap.className = 'canvas-wrap';
     const canvas = document.createElement('canvas');

@@ -28,7 +28,7 @@ The demo intentionally exercises the open → display → replace-session baseli
 8. optional reference `scanPath` / `lineRoi` overlay (display-only)
 9. display-only contrast (LUT + intensity range) on stored float planes
 10. interactive per-image navigation (wheel/pinch zoom; square images: drag a square region to zoom; non-square: H/V axis-zoom drag; Shift+pan; double-click home; unequal planes stretch-fill the wrap)
-11. optional per-group **Composite** (source and reference independently): channel 0 green + channel 1 magenta from each channel’s range
+11. optional per-group **Composite** (source and reference independently): each channel’s LUT + range, additive RGB clamp
 12. optional per-pane **Axes** ticks in physical units from `plane.axes` (adaptive major/minor; Y is 0 at bottom after display transpose)
 13. `DELETE /api/v2/sessions/{sessionId}` automatically when opening a new file (the UI no longer has a Delete session button)
 
@@ -46,7 +46,7 @@ Immediately before canvas rendering, the demo calls `transposePlane()` for both 
 
 ## Display-only controls
 
-Contrast (per-channel LUT + min/max range), per-pane **Composite** (fixed green/magenta for ch0/ch1), and the reference scan-path overlay affect display only. They do not change the underlying image data or HTTP responses.
+Contrast (per-channel LUT + min/max range), per-pane **Composite** (LUT-colorize each channel then add RGB), and the reference scan-path overlay affect display only. They do not change the underlying image data or HTTP responses.
 
 ## Compatibility
 
