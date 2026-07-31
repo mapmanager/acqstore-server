@@ -16,6 +16,7 @@ Do not begin with the detailed reference documents. Use them only when the roadm
 
 - [`client-roadmap.md`](client-roadmap.md) — the onboarding path for a new client
 - [`reference/`](reference/README.md) — detailed API, JavaScript, error, testing, and architecture reference
+- [`reference-clients/`](reference-clients/) — non-shipped HTML reference clients (for maintainers comparing demo behavior)
 - [`v1/`](v1/README.md) — archived API v1 documentation for existing integrations
 
 ## Running server

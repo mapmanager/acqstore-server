@@ -80,6 +80,8 @@ Representative-format tests are optional and skip cleanly when local fixtures ar
 
 Public docs site: [https://mapmanager.github.io/acqstore-server/](https://mapmanager.github.io/acqstore-server/)
 
+The Docs GitHub Actions workflow builds MkDocs on pull requests and deploys to GitHub Pages from `main` (and manual dispatch). See [`CHANGELOG.md`](CHANGELOG.md) for recent product and docs changes.
+
 MkDocs source is under [`docs/`](docs/) (end-user GUI, LLM/JS client path, optional reference detail, and a small mkdocstrings API section). Working notes may still live under `docs-dev/` for maintainers; the published site does not link there.
 
 Local preview and strict build:

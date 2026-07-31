@@ -4,6 +4,8 @@ When you start the packaged app, a small status window stays open while the loca
 
 ![AcqStore Server status window](../assets/acqstore-server-gui.png)
 
+The screenshot may lag behind the latest UI; the header and button table below match the current window.
+
 ## Header
 
 The top row shows **AcqStore Server**, the app version, and **Documentation** (opens the public MkDocs site at [https://mapmanager.github.io/acqstore-server/](https://mapmanager.github.io/acqstore-server/)).

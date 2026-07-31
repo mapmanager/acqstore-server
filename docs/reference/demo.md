@@ -20,22 +20,30 @@ The demo intentionally exercises the complete baseline client lifecycle:
 
 1. `GET /api/v2/health`
 2. `GET /api/v2/capabilities`
-3. `POST /api/v2/pick-and-open` or `POST /api/v2/open`
+3. `POST /api/v2/pick-and-open` (**Open File** in the UI)
 4. `GET /api/v2/sessions/{sessionId}`
 5. fetch each source `channels[].dataUrl`
 6. fetch each optional `reference.channels[].dataUrl`
 7. decode raw little-endian float32 data
 8. validate `byteLength` and `plane.shape`
 9. transpose immediately before canvas display
-10. `DELETE /api/v2/sessions/{sessionId}`
+10. optional reference `scanPath` / `lineRoi` overlay (display-only)
+11. display-only contrast (LUT + intensity range) on stored float planes
+12. `DELETE /api/v2/sessions/{sessionId}` (explicit **Delete session**, or automatically when opening a new file)
 
-The server uses AcqStore and `AcqImage` to open the acquisition. The demo displays the returned AcqStore header, live session metadata, source channels, optional reference channels, and the full open response.
+The maintained demo UI does not expose `POST /api/v2/open`. That path remains part of the HTTP API for other clients (see the [API reference](api.md) and [Build a client](../llm/build-a-client.md)).
+
+The server uses AcqStore and `AcqImage` to open the acquisition. The demo displays source channels, optional reference channels, the AcqStore header, live session metadata (collapsed), and the full open response (collapsed).
 
 ## Orientation
 
 The API returns the original row-major two-dimensional plane. The server never transposes it.
 
 Immediately before canvas rendering, the demo calls `transposePlane()` for both source and reference planes. This is a demo display decision and does not alter the HTTP contract.
+
+## Display-only controls
+
+Contrast LUTs and min/max range, and the reference scan-path overlay, affect canvas drawing only. They do not rewrite session floats or change the HTTP responses.
 
 ## Compatibility
 

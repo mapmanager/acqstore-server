@@ -53,6 +53,10 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     assert 'id="rangeMin"' in html
     assert 'id="rangeMax"' in html
     assert 'id="rangeAuto"' in html
+    assert 'Math.log1p(count) / Math.log1p(maxCount)' in html
+    assert 'const LUT_TABLES = buildLutTables()' in html
+    assert 'lutColor(normalized, display.lut)' not in html
+    assert 'Drag the dark and light handles' not in html
     for lut in (
         'gray',
         'yellow',

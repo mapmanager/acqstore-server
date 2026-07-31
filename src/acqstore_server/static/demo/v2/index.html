@@ -33,7 +33,6 @@ button:disabled { opacity:.45; cursor:default; }
 .range-fields { display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:8px; margin-top:8px; }
 .range-fields label { display:grid; gap:4px; color:var(--muted); font-size:12px; }
 .range-fields input { width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
-.range-hint { margin:7px 0 0; }
 summary { color:var(--text); cursor:pointer; font-size:15px; font-weight:700; }
 details[open] summary { margin-bottom:10px; }
 .canvas-wrap { overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:8px; background:#020617; }
@@ -86,7 +85,6 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
     <label>Max <input id="rangeMax" type="number" step="any"></label>
     <button id="rangeAuto" type="button">Auto</button>
   </div>
-  <p class="range-hint">Drag the dark and light handles or enter values. Display only.</p>
 </div>
 <section class="card">
   <h2>Source channels</h2>
@@ -260,6 +258,18 @@ function rgbStops(t, stops) {
   }
   return stops[stops.length - 1][1];
 }
+const LUT_COLOR_STOPS = {
+  hot: [[0,[0,0,0]],[0.33,[220,0,0]],[0.67,[255,220,0]],[1,[255,255,255]]],
+  viridis: [[0,[68,1,84]],[0.25,[59,82,139]],[0.5,[33,145,140]],[0.75,[94,201,98]],[1,[253,231,37]]],
+  magma: [[0,[0,0,4]],[0.25,[74,16,112]],[0.5,[181,54,122]],[0.75,[251,136,97]],[1,[252,253,191]]],
+  inferno: [[0,[0,0,4]],[0.25,[87,15,109]],[0.5,[187,55,84]],[0.75,[249,142,8]],[1,[252,255,164]]],
+  cividis: [[0,[0,32,76]],[0.25,[70,82,103]],[0.5,[118,118,107]],[0.75,[166,161,113]],[1,[255,233,69]]],
+  red: [[0,[0,0,0]],[0.35,[110,0,0]],[0.75,[255,45,25]],[1,[255,235,230]]],
+  yellow: [[0,[0,0,0]],[0.35,[105,80,0]],[0.75,[255,210,0]],[1,[255,255,220]]],
+  green: [[0,[0,0,0]],[0.35,[0,90,42]],[0.75,[0,220,85]],[1,[235,255,235]]],
+  cyan: [[0,[0,0,0]],[0.35,[0,77,102]],[0.75,[0,200,255]],[1,[230,255,255]]],
+  magenta: [[0,[0,0,0]],[0.35,[95,0,105]],[0.75,[255,0,220]],[1,[255,230,255]]],
+};
 function lutColor(t, lut) {
   if (lut === 'fire') {
     return [
@@ -268,34 +278,38 @@ function lutColor(t, lut) {
       clamp(Math.round(255 * (3 * t - 2)), 0, 255),
     ];
   }
-  const colorStops = {
-    hot: [[0,[0,0,0]],[0.33,[220,0,0]],[0.67,[255,220,0]],[1,[255,255,255]]],
-    viridis: [[0,[68,1,84]],[0.25,[59,82,139]],[0.5,[33,145,140]],[0.75,[94,201,98]],[1,[253,231,37]]],
-    magma: [[0,[0,0,4]],[0.25,[74,16,112]],[0.5,[181,54,122]],[0.75,[251,136,97]],[1,[252,253,191]]],
-    inferno: [[0,[0,0,4]],[0.25,[87,15,109]],[0.5,[187,55,84]],[0.75,[249,142,8]],[1,[252,255,164]]],
-    cividis: [[0,[0,32,76]],[0.25,[70,82,103]],[0.5,[118,118,107]],[0.75,[166,161,113]],[1,[255,233,69]]],
-    red: [[0,[0,0,0]],[0.35,[110,0,0]],[0.75,[255,45,25]],[1,[255,235,230]]],
-    yellow: [[0,[0,0,0]],[0.35,[105,80,0]],[0.75,[255,210,0]],[1,[255,255,220]]],
-    green: [[0,[0,0,0]],[0.35,[0,90,42]],[0.75,[0,220,85]],[1,[235,255,235]]],
-    cyan: [[0,[0,0,0]],[0.35,[0,77,102]],[0.75,[0,200,255]],[1,[230,255,255]]],
-    magenta: [[0,[0,0,0]],[0.35,[95,0,105]],[0.75,[255,0,220]],[1,[255,230,255]]],
-  };
-  if (colorStops[lut]) return rgbStops(t, colorStops[lut]);
+  if (LUT_COLOR_STOPS[lut]) return rgbStops(t, LUT_COLOR_STOPS[lut]);
   const gray = Math.round(clamp(t, 0, 1) * 255);
   return [gray, gray, gray];
 }
+function buildLutTables() {
+  const names = ['gray', 'yellow', 'cyan', 'magenta', 'red', 'green', 'fire', 'hot', 'viridis', 'magma', 'inferno', 'cividis'];
+  return Object.fromEntries(names.map(name => {
+    const table = new Uint8ClampedArray(256 * 3);
+    for (let index = 0; index < 256; index++) {
+      const color = lutColor(index / 255, name);
+      const offset = index * 3;
+      table[offset] = color[0];
+      table[offset + 1] = color[1];
+      table[offset + 2] = color[2];
+    }
+    return [name, table];
+  }));
+}
+const LUT_TABLES = buildLutTables();
 function drawPlane(canvas, values, shape, display) {
   const rows = shape[0], cols = shape[1];
   const min = display.min, max = display.max;
   const span = Math.max(1e-12, max - min);
+  const lut = LUT_TABLES[display.lut] || LUT_TABLES.gray;
   const image = new ImageData(cols, rows);
   for (let i = 0; i < values.length; i++) {
     const normalized = Number.isFinite(values[i]) ? clamp((values[i] - min) / span, 0, 1) : 0;
-    const color = lutColor(normalized, display.lut);
+    const lutOffset = Math.round(normalized * 255) * 3;
     const offset = i * 4;
-    image.data[offset] = color[0];
-    image.data[offset + 1] = color[1];
-    image.data[offset + 2] = color[2];
+    image.data[offset] = lut[lutOffset];
+    image.data[offset + 1] = lut[lutOffset + 1];
+    image.data[offset + 2] = lut[lutOffset + 2];
     image.data[offset + 3] = 255;
   }
   const offscreen = document.createElement('canvas');
@@ -430,7 +444,9 @@ function createContrastController(elements, redrawView) {
     histogram.bins.forEach((count, index) => {
       const x0 = left + index / histogram.bins.length * (right - left);
       const x1 = left + (index + 1) / histogram.bins.length * (right - left);
-      const barHeight = count / maxCount * (bottom - top);
+      // Match the analyzer: log1p bar height so sparse high bins don't crush the rest.
+      const frac = Math.log1p(count) / Math.log1p(maxCount);
+      const barHeight = frac * (bottom - top);
       ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
     });
     const valueToX = value => left + clamp(

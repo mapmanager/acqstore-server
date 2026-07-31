@@ -13,7 +13,7 @@ While the app is running, the live API contract is at `http://127.0.0.1:8767/doc
 ## Start here
 
 - [Get the desktop app](users/install.md) — request and run the packaged app
-- [Status window](users/gui.md) — what the five buttons do
+- [Status window](users/gui.md) — header, Documentation link, and action buttons
 - [Built-in demo](users/demo.md) — open a file and view images
 - [Build a client](llm/build-a-client.md) — first JavaScript / LLM path
 - [Cursor prompt](llm/prompt.md) — copy-paste prompt for an agent
