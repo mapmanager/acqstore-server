@@ -20,6 +20,14 @@ Changed:
 
 Added:
 
+- Modular ES-module layout under `static/demo/v2/` (`css/demo.css`, `js/*.js`); `/demo/v2/` now serves the demo directory (not only `index.html`).
+- Frozen hygiene monolith at `static/demo/v2/archive/index.monolith.html` (unserved reference).
+
+Changed:
+
+- Demo entry `index.html` is markup-only and loads `./js/app.js` as `type="module"`.
+
+
 - Per-pane **Contrast** cards (one row per channel with Color LUT and Range…); shared Range popover with log-scaled histogram, min/max, and Auto (display-only).
 - Reference **Show scan path** overlay (polyline + points from `scanPath`, with `lineRoi` fallback).
 - Collapsible **Session** and **Open response** sections.
