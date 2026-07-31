@@ -1,11 +1,15 @@
 // Interactive zoom/pan viewport for channel canvas elements.
 import {clamp} from './util.js';
 
+/** Reserved screen gutters so axis labels sit outside the pixel rectangle. */
+const PLOT_MARGIN = {left: 48, right: 10, top: 6, bottom: 22};
+
 /**
  * Interactive viewport for one channel canvas.
  * Wheel/pinch: isotropic zoom · Shift+drag: pan · Double-click: home.
  * Square images (equal pixel width/height): drag a square region to zoom.
  * Non-square images: drag H/V for axis zoom; stretch-fill home fit.
+ * Image is fitted into the inner plot rect; margins stay free for axis HUD.
  */
 function createImageViewport(canvas, options={}) {
   const wrap = canvas.parentElement;
@@ -45,6 +49,20 @@ function createImageViewport(canvas, options={}) {
     }
     return false;
   }
+  function plotRect() {
+    const left = PLOT_MARGIN.left;
+    const top = PLOT_MARGIN.top;
+    const right = Math.max(left + 1, canvas.width - PLOT_MARGIN.right);
+    const bottom = Math.max(top + 1, canvas.height - PLOT_MARGIN.bottom);
+    return {
+      left,
+      top,
+      right,
+      bottom,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+    };
+  }
   function nearEqual(a, b) {
     return Math.abs(a - b) < 1e-6;
   }
@@ -73,23 +91,25 @@ function createImageViewport(canvas, options={}) {
   function fitHome() {
     syncCanvasSize();
     if (!imageWidth || !imageHeight) return;
+    const plot = plotRect();
     if (imageWidth === imageHeight) {
-      const fit = Math.min(canvas.width / imageWidth, canvas.height / imageHeight) * 0.98;
+      const fit = Math.min(plot.width / imageWidth, plot.height / imageHeight) * 0.98;
       scaleX = fit;
       scaleY = fit;
-      offsetX = (canvas.width - imageWidth * scaleX) / 2;
-      offsetY = (canvas.height - imageHeight * scaleY) / 2;
+      offsetX = plot.left + (plot.width - imageWidth * scaleX) / 2;
+      offsetY = plot.top + (plot.height - imageHeight * scaleY) / 2;
     } else {
-      // Stretch kymograph / unequal planes to fill the wrap width and height.
-      scaleX = canvas.width / imageWidth;
-      scaleY = canvas.height / imageHeight;
-      offsetX = 0;
-      offsetY = 0;
+      // Stretch kymograph / unequal planes to fill the plot area.
+      scaleX = plot.width / imageWidth;
+      scaleY = plot.height / imageHeight;
+      offsetX = plot.left;
+      offsetY = plot.top;
     }
     home = {scaleX, scaleY, offsetX, offsetY};
   }
   function drawAxisGuide() {
     if (!axisStart || !axisCurrent) return;
+    const plot = plotRect();
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
@@ -107,22 +127,22 @@ function createImageViewport(canvas, options={}) {
     } else if (mode === 'axisH') {
       const x0 = Math.min(axisStart.x, axisCurrent.x);
       const x1 = Math.max(axisStart.x, axisCurrent.x);
-      ctx.fillRect(x0, 0, Math.max(1, x1 - x0), canvas.height);
+      ctx.fillRect(x0, plot.top, Math.max(1, x1 - x0), plot.height);
       ctx.beginPath();
-      ctx.moveTo(x0 + 0.5, 0);
-      ctx.lineTo(x0 + 0.5, canvas.height);
-      ctx.moveTo(x1 + 0.5, 0);
-      ctx.lineTo(x1 + 0.5, canvas.height);
+      ctx.moveTo(x0 + 0.5, plot.top);
+      ctx.lineTo(x0 + 0.5, plot.bottom);
+      ctx.moveTo(x1 + 0.5, plot.top);
+      ctx.lineTo(x1 + 0.5, plot.bottom);
       ctx.stroke();
     } else if (mode === 'axisV') {
       const y0 = Math.min(axisStart.y, axisCurrent.y);
       const y1 = Math.max(axisStart.y, axisCurrent.y);
-      ctx.fillRect(0, y0, canvas.width, Math.max(1, y1 - y0));
+      ctx.fillRect(plot.left, y0, plot.width, Math.max(1, y1 - y0));
       ctx.beginPath();
-      ctx.moveTo(0, y0 + 0.5);
-      ctx.lineTo(canvas.width, y0 + 0.5);
-      ctx.moveTo(0, y1 + 0.5);
-      ctx.lineTo(canvas.width, y1 + 0.5);
+      ctx.moveTo(plot.left, y0 + 0.5);
+      ctx.lineTo(plot.right, y0 + 0.5);
+      ctx.moveTo(plot.left, y1 + 0.5);
+      ctx.lineTo(plot.right, y1 + 0.5);
       ctx.stroke();
     }
     ctx.restore();
@@ -143,6 +163,7 @@ function createImageViewport(canvas, options={}) {
     ctx.drawImage(imageCanvas, 0, 0);
     options.getOverlay?.(ctx, {scaleX, scaleY});
     ctx.restore();
+    // Image frame is drawn with Axes chrome in getAxisLabels (not when Axes is off).
     options.getAxisLabels?.(ctx, {imageWidth, imageHeight, scaleX, scaleY, offsetX, offsetY});
     drawAxisGuide();
   }
@@ -157,6 +178,7 @@ function createImageViewport(canvas, options={}) {
     draw();
   }
   function applyAxisZoom(axis, start, end) {
+    const plot = plotRect();
     if (axis === 'h') {
       const x0 = Math.min(start.x, end.x);
       const x1 = Math.max(start.x, end.x);
@@ -165,8 +187,8 @@ function createImageViewport(canvas, options={}) {
       const world1 = (x1 - offsetX) / scaleX;
       const span = world1 - world0;
       if (!(span > 0)) return;
-      const next = clamp(canvas.width / span, 0.05, 200);
-      offsetX = -world0 * next;
+      const next = clamp(plot.width / span, 0.05, 200);
+      offsetX = plot.left - world0 * next;
       scaleX = next;
       return;
     }
@@ -177,11 +199,12 @@ function createImageViewport(canvas, options={}) {
     const world1 = (y1 - offsetY) / scaleY;
     const span = world1 - world0;
     if (!(span > 0)) return;
-    const next = clamp(canvas.height / span, 0.05, 200);
-    offsetY = -world0 * next;
+    const next = clamp(plot.height / span, 0.05, 200);
+    offsetY = plot.top - world0 * next;
     scaleY = next;
   }
   function applyRegionZoom(start, end) {
+    const plot = plotRect();
     const rect = squareDragRect(start, end);
     if (rect.x1 - rect.x0 < AXIS_MIN_SPAN_PX || rect.y1 - rect.y0 < AXIS_MIN_SPAN_PX) return;
     const worldX0 = (rect.x0 - offsetX) / scaleX;
@@ -191,11 +214,11 @@ function createImageViewport(canvas, options={}) {
     const spanX = worldX1 - worldX0;
     const spanY = worldY1 - worldY0;
     if (!(spanX > 0) || !(spanY > 0)) return;
-    const next = clamp(Math.min(canvas.width / spanX, canvas.height / spanY), 0.05, 200);
+    const next = clamp(Math.min(plot.width / spanX, plot.height / spanY), 0.05, 200);
     const usedW = spanX * next;
     const usedH = spanY * next;
-    offsetX = -worldX0 * next + (canvas.width - usedW) / 2;
-    offsetY = -worldY0 * next + (canvas.height - usedH) / 2;
+    offsetX = -worldX0 * next + plot.left + (plot.width - usedW) / 2;
+    offsetY = -worldY0 * next + plot.top + (plot.height - usedH) / 2;
     scaleX = next;
     scaleY = next;
   }
@@ -364,4 +387,4 @@ function createImageViewport(canvas, options={}) {
   };
 }
 
-export {createImageViewport};
+export {createImageViewport, PLOT_MARGIN};

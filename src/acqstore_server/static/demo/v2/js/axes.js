@@ -81,6 +81,7 @@ function drawAxisLabels(ctx, drawState) {
   const axes = drawState.axes;
   if (!axes?.x && !axes?.y) return;
   const {imageWidth, imageHeight, scaleX, scaleY, offsetX, offsetY} = drawState;
+  // Image rectangle in screen space; frame + labels/ticks stay in gutters (no lines through pixels).
   const left = offsetX;
   const top = offsetY;
   const right = offsetX + imageWidth * scaleX;
@@ -94,42 +95,46 @@ function drawAxisLabels(ctx, drawState) {
   ctx.font = '10px system-ui,sans-serif';
   ctx.lineWidth = 1;
 
+  // Frame is part of Axes chrome (gated by the same checkbox as this draw path).
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+  ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, widthPx - 1), Math.max(0, heightPx - 1));
+
   if (xMeta) {
     const ticks = adaptiveAxisTicks(xMeta.max, widthPx, {minMajorPx: 64, minMinorPx: 16});
     const xAt = value => left + (value / xMeta.step) * scaleX;
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.065)';
+    // Outside stubs only — no vertical grid through the image.
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
     for (const value of ticks.minor) {
       const x = xAt(value);
       if (x < left - 0.5 || x > right + 0.5) continue;
       ctx.beginPath();
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, bottom);
+      ctx.moveTo(x, bottom);
+      ctx.lineTo(x, bottom + 4);
       ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.16)';
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)';
     for (const value of ticks.major) {
       const x = xAt(value);
       if (x < left - 0.5 || x > right + 0.5) continue;
       ctx.beginPath();
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, bottom);
+      ctx.moveTo(x, bottom);
+      ctx.lineTo(x, bottom + 6);
       ctx.stroke();
     }
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     for (const value of ticks.major) {
       const x = xAt(value);
       if (x < left - 0.5 || x > right + 0.5) continue;
       const label = formatAxisTick(value, ticks.majorStep, xMeta.unit);
-      const labelWidth = ctx.measureText(label).width;
-      const labelX = clamp(x + 2, left + 1, right - labelWidth - 1);
-      ctx.fillText(label, labelX, Math.min(ctx.canvas.height - 4, bottom + 14));
+      const labelX = clamp(x, left + 2, right - 2);
+      ctx.fillText(label, labelX, bottom + 7);
     }
     const unit = axisUnitLabel(xMeta.unit);
     if (unit) {
       ctx.textAlign = 'right';
-      ctx.fillText(unit, right, Math.min(ctx.canvas.height - 4, bottom + 14));
+      ctx.fillText(unit, right, bottom + 7);
     }
   }
 
@@ -137,37 +142,39 @@ function drawAxisLabels(ctx, drawState) {
     const ticks = adaptiveAxisTicks(yMeta.max, heightPx, {minMajorPx: 28, minMinorPx: 11});
     // Plot-style Y after display transpose: 0 at the image bottom, max at the top.
     const yAt = value => bottom - (value / yMeta.step) * scaleY;
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.06)';
-    for (const value of ticks.major) {
-      const y = yAt(value);
-      if (y < top - 0.5 || y > bottom + 0.5) continue;
-      ctx.beginPath();
-      ctx.moveTo(left, y);
-      ctx.lineTo(right, y);
-      ctx.stroke();
-    }
+    // Outside stubs only — no horizontal grid through the image.
     ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
     for (const value of ticks.minor) {
       const y = yAt(value);
       if (y < top - 0.5 || y > bottom + 0.5) continue;
       ctx.beginPath();
-      ctx.moveTo(left, y);
-      ctx.lineTo(left + 5, y);
+      ctx.moveTo(left - 4, y);
+      ctx.lineTo(left, y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)';
+    for (const value of ticks.major) {
+      const y = yAt(value);
+      if (y < top - 0.5 || y > bottom + 0.5) continue;
+      ctx.beginPath();
+      ctx.moveTo(left - 6, y);
+      ctx.lineTo(left, y);
       ctx.stroke();
     }
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
     const unit = axisUnitLabel(yMeta.unit);
     if (unit) {
+      // Unit sits in the left gutter, above the tick column (outside pixels).
       ctx.textBaseline = 'top';
       ctx.textAlign = 'right';
-      ctx.fillText(unit, left - 6, top + 2);
+      ctx.fillText(unit, left - 8, top + 2);
     }
-    ctx.textBaseline = 'alphabetic';
+    ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
     for (const value of ticks.major) {
       const y = yAt(value);
-      if (y < top + 10 || y > bottom - 8) continue;
-      ctx.fillText(formatAxisTick(value, ticks.majorStep, yMeta.unit), left - 6, y - 5);
+      if (y < top - 0.5 || y > bottom + 0.5) continue;
+      ctx.fillText(formatAxisTick(value, ticks.majorStep, yMeta.unit), left - 8, y);
     }
   }
   ctx.restore();
