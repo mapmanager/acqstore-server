@@ -35,8 +35,44 @@ button:disabled { opacity:.45; cursor:default; }
 .range-fields input { width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
 summary { color:var(--text); cursor:pointer; font-size:15px; font-weight:700; }
 details[open] summary { margin-bottom:10px; }
-.canvas-wrap { overflow:auto; max-height:520px; border:1px solid var(--line); border-radius:8px; background:#020617; }
-canvas { display:block; image-rendering:auto; }
+.split-viewport {
+  display:flex; flex-direction:column; gap:0;
+  min-height:min(70vh, 720px); height:min(70vh, 720px);
+  margin-top:12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel);
+}
+.split-pane {
+  min-height:0; overflow:hidden; padding:12px; background:var(--panel);
+  display:flex; flex-direction:column; gap:8px;
+}
+.split-pane-top { flex:1 1 0; }
+.split-pane-bottom { flex:1 1 0; }
+.split-divider {
+  flex:0 0 8px; cursor:row-resize; background:#1e293b; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+}
+.split-divider:hover, .split-divider.active { background:var(--accent); }
+.split-divider[hidden] { display:none; }
+.split-viewport.single .split-pane-top { flex:1 1 auto; }
+.split-viewport.single .split-pane-bottom { flex:0 0 auto; }
+.split-pane > h2,
+.split-pane > .section-heading,
+.split-pane > #referenceEmpty { flex:0 0 auto; }
+.split-pane > .grid {
+  flex:1 1 auto; min-height:0;
+  grid-auto-rows:minmax(0, 1fr); align-content:stretch;
+}
+.split-pane .card {
+  display:flex; flex-direction:column; gap:6px; min-height:0; height:100%; overflow:hidden;
+}
+.split-pane .card > h2,
+.split-pane .card > .meta { flex:0 0 auto; margin-bottom:0; }
+.canvas-wrap {
+  position:relative; flex:1 1 auto; min-height:120px; height:auto; overflow:hidden;
+  border:1px solid var(--line); border-radius:8px; background:#020617; touch-action:none;
+}
+.canvas-wrap canvas { display:block; width:100%; height:100%; cursor:crosshair; image-rendering:pixelated; }
+.canvas-wrap.panning canvas { cursor:grabbing; }
+.canvas-wrap.axis-zooming canvas { cursor:col-resize; }
+.canvas-wrap.axis-zooming-v canvas { cursor:row-resize; }
 pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px; background:#020617; font-size:11px; }
 .meta { color:var(--muted); font-size:12px; margin:0 0 8px; }
 </style>
@@ -86,32 +122,47 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
     <button id="rangeAuto" type="button">Auto</button>
   </div>
 </div>
-<section class="card">
-  <h2>Source channels</h2>
-  <div id="channels" class="grid"></div>
-</section>
-<section class="card" style="margin-top:12px">
-  <div class="section-heading">
-    <h2>Reference channels</h2>
-    <label id="scanPathControl" class="toggle" hidden>
-      <input id="showScanPath" type="checkbox" checked>
-      Show scan path
-    </label>
-  </div>
-  <div id="references" class="grid"></div>
-  <p id="referenceEmpty">No reference image loaded.</p>
-</section>
-<section class="card" style="margin-top:12px">
-  <h2>AcqStore header</h2>
-  <pre id="headerPre">{}</pre>
-</section>
+<div id="imageSplit" class="split-viewport single">
+  <section id="sourcePane" class="split-pane split-pane-top">
+    <div class="section-heading">
+      <h2>Source channels</h2>
+      <label id="sourceCompositeControl" class="toggle" hidden>
+        <input id="sourceComposite" type="checkbox">
+        Composite
+      </label>
+    </div>
+    <div id="channels" class="grid"></div>
+  </section>
+  <div id="imageSplitDivider" class="split-divider" hidden role="separator" aria-orientation="horizontal" aria-label="Resize source and reference panes"></div>
+  <section id="referencePane" class="split-pane split-pane-bottom">
+    <div class="section-heading">
+      <h2>Reference channels</h2>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <label id="referenceCompositeControl" class="toggle" hidden>
+          <input id="referenceComposite" type="checkbox">
+          Composite
+        </label>
+        <label id="scanPathControl" class="toggle" hidden>
+          <input id="showScanPath" type="checkbox" checked>
+          Show scan path
+        </label>
+      </div>
+    </div>
+    <div id="references" class="grid"></div>
+    <p id="referenceEmpty">No reference image loaded.</p>
+  </section>
+</div>
 <details class="card" style="margin-top:12px">
-  <summary>Session</summary>
-  <pre id="sessionPre">{}</pre>
+  <summary>AcqStore header</summary>
+  <pre id="headerPre">{}</pre>
 </details>
 <details class="card" style="margin-top:12px">
   <summary>Open response</summary>
   <pre id="responsePre">{}</pre>
+</details>
+<details class="card" style="margin-top:12px">
+  <summary>Session</summary>
+  <pre id="sessionPre">{}</pre>
 </details>
 <script>
 const API = '/api/v2';
@@ -123,12 +174,22 @@ const referencesEl = document.getElementById('references');
 const referenceEmptyEl = document.getElementById('referenceEmpty');
 const scanPathControl = document.getElementById('scanPathControl');
 const showScanPath = document.getElementById('showScanPath');
+const sourceCompositeControl = document.getElementById('sourceCompositeControl');
+const sourceComposite = document.getElementById('sourceComposite');
+const referenceCompositeControl = document.getElementById('referenceCompositeControl');
+const referenceComposite = document.getElementById('referenceComposite');
 const responsePre = document.getElementById('responsePre');
 const headerPre = document.getElementById('headerPre');
 const sessionPre = document.getElementById('sessionPre');
 const serverInfoEl = document.getElementById('serverInfo');
+const imageSplit = document.getElementById('imageSplit');
+const sourcePane = document.getElementById('sourcePane');
+const referencePane = document.getElementById('referencePane');
+const imageSplitDivider = document.getElementById('imageSplitDivider');
 let currentSessionId = null;
-
+let activeViews = [];
+/** Per-group display slots when Composite is on (independent source vs reference). */
+const compositeSlots = {source:null, reference:null};
 function setBusy(busy) {
   pickBtn.disabled = busy;
   closeBtn.disabled = busy || !currentSessionId;
@@ -149,7 +210,6 @@ async function jsonRequest(url, body) {
   }
   return payload;
 }
-
 async function getJson(url, options={}) {
   const response = await fetch(url, options);
   const payload = await response.json();
@@ -171,6 +231,109 @@ async function loadServerInfo() {
     serverInfoEl.textContent = `Server unavailable: ${error}`;
   }
 }
+function destroyActiveViews() {
+  activeViews.forEach(view => view.viewport?.destroy());
+  activeViews = [];
+  for (const group of Object.keys(compositeSlots)) {
+    compositeSlots[group]?.viewport?.destroy();
+    compositeSlots[group] = null;
+  }
+}
+function groupViews(group) {
+  return activeViews
+    .filter(view => view.group === group)
+    .slice()
+    .sort((a, b) => a.channelIndex - b.channelIndex);
+}
+function compositeEnabled(group) {
+  return group === 'source' ? sourceComposite.checked : referenceComposite.checked;
+}
+function compositePair(group) {
+  const views = groupViews(group);
+  if (views.length < 2) return null;
+  const [first, second] = views;
+  const [rows, cols] = first.displayShape;
+  if (second.displayShape[0] !== rows || second.displayShape[1] !== cols) return null;
+  return [first, second];
+}
+function updateCompositeControls() {
+  for (const [group, control, checkbox] of [
+    ['source', sourceCompositeControl, sourceComposite],
+    ['reference', referenceCompositeControl, referenceComposite],
+  ]) {
+    const views = groupViews(group);
+    const canComposite = views.length >= 2 && Boolean(compositePair(group));
+    control.hidden = !canComposite;
+    checkbox.disabled = !canComposite;
+    if (!canComposite) checkbox.checked = false;
+  }
+}
+function destroyGroupViewports(group) {
+  groupViews(group).forEach(view => {
+    view.viewport?.destroy();
+    view.viewport = null;
+    view.canvas = null;
+  });
+  compositeSlots[group]?.viewport?.destroy();
+  compositeSlots[group] = null;
+}
+function mountGroupLayout(group) {
+  const container = group === 'source' ? channelsEl : referencesEl;
+  const views = groupViews(group);
+  destroyGroupViewports(group);
+  container.replaceChildren();
+  if (views.length === 0) return;
+
+  if (compositeEnabled(group) && compositePair(group)) {
+    const [first, second] = compositePair(group);
+    const card = document.createElement('article');
+    card.className = 'card';
+    const title = document.createElement('h2');
+    title.textContent = group === 'source' ? 'Source composite' : 'Reference composite';
+    const meta = document.createElement('p');
+    meta.className = 'meta';
+    meta.textContent =
+      `${first.label} (green) + ${second.label} (magenta) · ` +
+      `${first.displayShape[0]} × ${first.displayShape[1]}`;
+    const wrap = document.createElement('div');
+    wrap.className = 'canvas-wrap';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    card.append(title, meta, wrap);
+    container.appendChild(card);
+    compositeSlots[group] = {
+      canvas,
+      viewport: null,
+      scanPath: first.scanPath,
+      lineRoi: first.lineRoi,
+    };
+    return;
+  }
+
+  for (const view of views) {
+    const card = document.createElement('article');
+    card.className = 'card';
+    const title = document.createElement('h2');
+    title.textContent = view.label;
+    const meta = document.createElement('p');
+    meta.className = 'meta';
+    meta.textContent = view.metaText;
+    const wrap = document.createElement('div');
+    wrap.className = 'canvas-wrap';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    card.append(title, meta, wrap);
+    container.appendChild(card);
+    view.canvas = canvas;
+  }
+}
+function redrawGroupDisplay(group, opts={}) {
+  if (compositeEnabled(group) && compositePair(group)) {
+    drawGroupComposite(group, opts);
+    return;
+  }
+  groupViews(group).forEach(view => drawChannelView(view, opts));
+}
 async function deleteCurrentSession() {
   if (!currentSessionId) return;
   setBusy(true);
@@ -178,11 +341,17 @@ async function deleteCurrentSession() {
     const deletedId = currentSessionId;
     await getJson(`${API}/sessions/${encodeURIComponent(deletedId)}`, {method:'DELETE'});
     currentSessionId = null;
+    destroyActiveViews();
     channelsEl.replaceChildren();
     referencesEl.replaceChildren();
     referenceEmptyEl.hidden = false;
     scanPathControl.hidden = true;
+    sourceCompositeControl.hidden = true;
+    referenceCompositeControl.hidden = true;
+    sourceComposite.checked = false;
+    referenceComposite.checked = false;
     contrastController.reset();
+    splitPane.setEnabled(false);
     responsePre.textContent = '{}';
     headerPre.textContent = '{}';
     sessionPre.textContent = '{}';
@@ -297,7 +466,7 @@ function buildLutTables() {
   }));
 }
 const LUT_TABLES = buildLutTables();
-function drawPlane(canvas, values, shape, display) {
+function renderPlaneBitmap(values, shape, display) {
   const rows = shape[0], cols = shape[1];
   const min = display.min, max = display.max;
   const span = Math.max(1e-12, max - min);
@@ -313,12 +482,42 @@ function drawPlane(canvas, values, shape, display) {
     image.data[offset + 3] = 255;
   }
   const offscreen = document.createElement('canvas');
-  offscreen.width = cols; offscreen.height = rows;
+  offscreen.width = cols;
+  offscreen.height = rows;
   offscreen.getContext('2d').putImageData(image, 0, 0);
-  const scale = Math.min(4, 900 / cols, 460 / rows);
-  canvas.width = Math.max(1, Math.round(cols * scale));
-  canvas.height = Math.max(1, Math.round(rows * scale));
-  canvas.getContext('2d').drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+  return offscreen;
+}
+/**
+ * Fixed v1 composite: channel 0 → green (G), channel 1 → magenta (R+B).
+ * Uses each view's display min/max only; ignores per-channel LUT.
+ * Source and reference composites are independent callers of this helper.
+ */
+function renderCompositeBitmap(viewA, viewB) {
+  const rows = viewA.displayShape[0];
+  const cols = viewA.displayShape[1];
+  const aMin = viewA.display.min;
+  const aMax = viewA.display.max;
+  const bMin = viewB.display.min;
+  const bMax = viewB.display.max;
+  const aSpan = Math.max(1e-12, aMax - aMin);
+  const bSpan = Math.max(1e-12, bMax - bMin);
+  const image = new ImageData(cols, rows);
+  for (let i = 0; i < viewA.values.length; i++) {
+    const ta = Number.isFinite(viewA.values[i]) ? clamp((viewA.values[i] - aMin) / aSpan, 0, 1) : 0;
+    const tb = Number.isFinite(viewB.values[i]) ? clamp((viewB.values[i] - bMin) / bSpan, 0, 1) : 0;
+    const green = Math.round(ta * 255);
+    const magenta = Math.round(tb * 255);
+    const offset = i * 4;
+    image.data[offset] = Math.min(255, magenta);
+    image.data[offset + 1] = Math.min(255, green);
+    image.data[offset + 2] = Math.min(255, magenta);
+    image.data[offset + 3] = 255;
+  }
+  const offscreen = document.createElement('canvas');
+  offscreen.width = cols;
+  offscreen.height = rows;
+  offscreen.getContext('2d').putImageData(image, 0, 0);
+  return offscreen;
 }
 function scanPathPoints(scanPath, lineRoi) {
   if (
@@ -335,38 +534,437 @@ function scanPathPoints(scanPath, lineRoi) {
   }
   return [];
 }
-function drawScanPath(canvas, sourceShape, scanPath, lineRoi) {
+function drawScanPathOverlay(ctx, scanPath, lineRoi, viewScale) {
   const points = scanPathPoints(scanPath, lineRoi);
   if (points.length === 0) return;
-
-  // API reference coords are x=dim1 and y=dim0. The displayed plane is transposed.
-  const scaleX = canvas.width / sourceShape[0];
-  const scaleY = canvas.height / sourceShape[1];
-  const toCanvas = ([x, y]) => [y * scaleX, x * scaleY];
-  const ctx = canvas.getContext('2d');
+  // API (x=dim1, y=dim0) → display image coords after transpose: (y, x).
+  const toImage = ([x, y]) => [y, x];
+  const stroke = Math.max(1, 2 / viewScale);
+  const radius = Math.max(1.5, 3 / viewScale);
   ctx.save();
   ctx.strokeStyle = '#fb7185';
   ctx.fillStyle = '#fb7185';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = stroke;
   ctx.beginPath();
   points.forEach((point, index) => {
-    const [x, y] = toCanvas(point);
+    const [x, y] = toImage(point);
     if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   });
   ctx.stroke();
   for (const point of points) {
-    const [x, y] = toCanvas(point);
+    const [x, y] = toImage(point);
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
     ctx.fill();
   }
   ctx.restore();
 }
-function drawChannelView(view) {
-  drawPlane(view.canvas, view.values, view.displayShape, view.display);
-  if (view.group === 'reference' && showScanPath.checked) {
-    drawScanPath(view.canvas, view.sourceShape, view.scanPath, view.lineRoi);
+
+/**
+ * Interactive viewport for one channel canvas.
+ * Wheel/pinch: isotropic zoom · Drag H/V: axis zoom · Shift+drag: pan · Double-click: home.
+ * Non-square images stretch to fill the wrap; square images use aspect-preserving contain.
+ */
+function createImageViewport(canvas, options={}) {
+  const wrap = canvas.parentElement;
+  const ctx = canvas.getContext('2d');
+  const AXIS_LOCK_PX = 8;
+  const AXIS_MIN_SPAN_PX = 12;
+  let imageCanvas = null;
+  let imageWidth = 0;
+  let imageHeight = 0;
+  let scaleX = 1;
+  let scaleY = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+  let home = {scaleX:1, scaleY:1, offsetX:0, offsetY:0};
+  let mode = 'none';
+  let lastPointer = null;
+  let axisStart = null;
+  let axisCurrent = null;
+  let activeTouches = new Map();
+  let pinch = null;
+  let destroyed = false;
+
+  function localPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) * (canvas.width / Math.max(1, rect.width)),
+      y: (event.clientY - rect.top) * (canvas.height / Math.max(1, rect.height)),
+    };
   }
+  function syncCanvasSize() {
+    const width = Math.max(1, Math.floor(wrap.clientWidth));
+    const height = Math.max(1, Math.floor(wrap.clientHeight));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+      return true;
+    }
+    return false;
+  }
+  function nearEqual(a, b) {
+    return Math.abs(a - b) < 1e-6;
+  }
+  function isAtHome() {
+    return nearEqual(scaleX, home.scaleX)
+      && nearEqual(scaleY, home.scaleY)
+      && nearEqual(offsetX, home.offsetX)
+      && nearEqual(offsetY, home.offsetY);
+  }
+  function fitHome() {
+    syncCanvasSize();
+    if (!imageWidth || !imageHeight) return;
+    if (imageWidth === imageHeight) {
+      const fit = Math.min(canvas.width / imageWidth, canvas.height / imageHeight) * 0.98;
+      scaleX = fit;
+      scaleY = fit;
+      offsetX = (canvas.width - imageWidth * scaleX) / 2;
+      offsetY = (canvas.height - imageHeight * scaleY) / 2;
+    } else {
+      // Stretch kymograph / unequal planes to fill the wrap width and height.
+      scaleX = canvas.width / imageWidth;
+      scaleY = canvas.height / imageHeight;
+      offsetX = 0;
+      offsetY = 0;
+    }
+    home = {scaleX, scaleY, offsetX, offsetY};
+  }
+  function drawAxisGuide() {
+    if (!axisStart || !axisCurrent || (mode !== 'axisH' && mode !== 'axisV')) return;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.lineWidth = 1;
+    if (mode === 'axisH') {
+      const x0 = Math.min(axisStart.x, axisCurrent.x);
+      const x1 = Math.max(axisStart.x, axisCurrent.x);
+      ctx.fillRect(x0, 0, Math.max(1, x1 - x0), canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(x0 + 0.5, 0);
+      ctx.lineTo(x0 + 0.5, canvas.height);
+      ctx.moveTo(x1 + 0.5, 0);
+      ctx.lineTo(x1 + 0.5, canvas.height);
+      ctx.stroke();
+    } else {
+      const y0 = Math.min(axisStart.y, axisCurrent.y);
+      const y1 = Math.max(axisStart.y, axisCurrent.y);
+      ctx.fillRect(0, y0, canvas.width, Math.max(1, y1 - y0));
+      ctx.beginPath();
+      ctx.moveTo(0, y0 + 0.5);
+      ctx.lineTo(canvas.width, y0 + 0.5);
+      ctx.moveTo(0, y1 + 0.5);
+      ctx.lineTo(canvas.width, y1 + 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function draw() {
+    if (destroyed) return;
+    syncCanvasSize();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!imageCanvas) return;
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scaleX, scaleY);
+    ctx.imageSmoothingEnabled = scaleX < 1 || scaleY < 1;
+    ctx.drawImage(imageCanvas, 0, 0);
+    options.getOverlay?.(ctx, {scaleX, scaleY});
+    ctx.restore();
+    drawAxisGuide();
+  }
+  function zoomAt(screenX, screenY, factor) {
+    const nextX = clamp(scaleX * factor, 0.05, 200);
+    const nextY = clamp(scaleY * factor, 0.05, 200);
+    if (nearEqual(nextX, scaleX) && nearEqual(nextY, scaleY)) return;
+    offsetX = screenX - (screenX - offsetX) * (nextX / scaleX);
+    offsetY = screenY - (screenY - offsetY) * (nextY / scaleY);
+    scaleX = nextX;
+    scaleY = nextY;
+    draw();
+  }
+  function applyAxisZoom(axis, start, end) {
+    if (axis === 'h') {
+      const x0 = Math.min(start.x, end.x);
+      const x1 = Math.max(start.x, end.x);
+      if (x1 - x0 < AXIS_MIN_SPAN_PX) return;
+      const world0 = (x0 - offsetX) / scaleX;
+      const world1 = (x1 - offsetX) / scaleX;
+      const span = world1 - world0;
+      if (!(span > 0)) return;
+      const next = clamp(canvas.width / span, 0.05, 200);
+      offsetX = -world0 * next;
+      scaleX = next;
+      return;
+    }
+    const y0 = Math.min(start.y, end.y);
+    const y1 = Math.max(start.y, end.y);
+    if (y1 - y0 < AXIS_MIN_SPAN_PX) return;
+    const world0 = (y0 - offsetY) / scaleY;
+    const world1 = (y1 - offsetY) / scaleY;
+    const span = world1 - world0;
+    if (!(span > 0)) return;
+    const next = clamp(canvas.height / span, 0.05, 200);
+    offsetY = -world0 * next;
+    scaleY = next;
+  }
+  function clearAxisMode() {
+    axisStart = null;
+    axisCurrent = null;
+    wrap.classList.remove('axis-zooming', 'axis-zooming-v');
+  }
+  function onWheel(event) {
+    event.preventDefault();
+    const point = localPoint(event);
+    const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+    zoomAt(point.x, point.y, factor);
+  }
+  function onDblClick(event) {
+    event.preventDefault();
+    scaleX = home.scaleX;
+    scaleY = home.scaleY;
+    offsetX = home.offsetX;
+    offsetY = home.offsetY;
+    clearAxisMode();
+    draw();
+  }
+  function onPointerDown(event) {
+    canvas.setPointerCapture?.(event.pointerId);
+    activeTouches.set(event.pointerId, {x:event.clientX, y:event.clientY});
+    if (activeTouches.size === 2) {
+      const points = Array.from(activeTouches.values());
+      pinch = {
+        distance: Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y),
+        scaleX,
+        scaleY,
+      };
+      mode = 'pinch';
+      clearAxisMode();
+      return;
+    }
+    if (event.button !== 0) return;
+    if (event.shiftKey) {
+      mode = 'pan';
+      lastPointer = localPoint(event);
+      wrap.classList.add('panning');
+      clearAxisMode();
+      return;
+    }
+    mode = 'axisPending';
+    axisStart = localPoint(event);
+    axisCurrent = axisStart;
+  }
+  function onPointerMove(event) {
+    if (!activeTouches.has(event.pointerId) && mode === 'none') return;
+    if (activeTouches.has(event.pointerId)) {
+      activeTouches.set(event.pointerId, {x:event.clientX, y:event.clientY});
+    }
+    if (mode === 'pinch' && activeTouches.size === 2 && pinch?.distance > 0) {
+      const points = Array.from(activeTouches.values());
+      const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      const rect = canvas.getBoundingClientRect();
+      const midX = ((points[0].x + points[1].x) / 2 - rect.left) * (canvas.width / Math.max(1, rect.width));
+      const midY = ((points[0].y + points[1].y) / 2 - rect.top) * (canvas.height / Math.max(1, rect.height));
+      const factor = distance / pinch.distance;
+      const nextX = clamp(pinch.scaleX * factor, 0.05, 200);
+      const nextY = clamp(pinch.scaleY * factor, 0.05, 200);
+      offsetX = midX - (midX - offsetX) * (nextX / scaleX);
+      offsetY = midY - (midY - offsetY) * (nextY / scaleY);
+      scaleX = nextX;
+      scaleY = nextY;
+      draw();
+      return;
+    }
+    if (mode === 'pan' && lastPointer) {
+      const point = localPoint(event);
+      offsetX += point.x - lastPointer.x;
+      offsetY += point.y - lastPointer.y;
+      lastPointer = point;
+      draw();
+      return;
+    }
+    if (mode === 'axisPending' || mode === 'axisH' || mode === 'axisV') {
+      const point = localPoint(event);
+      axisCurrent = point;
+      if (mode === 'axisPending' && axisStart) {
+        const dx = point.x - axisStart.x;
+        const dy = point.y - axisStart.y;
+        if (Math.hypot(dx, dy) >= AXIS_LOCK_PX) {
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            mode = 'axisH';
+            wrap.classList.add('axis-zooming');
+          } else {
+            mode = 'axisV';
+            wrap.classList.add('axis-zooming-v');
+          }
+        }
+      }
+      if (mode === 'axisH' || mode === 'axisV') draw();
+    }
+  }
+  function endPointer(event) {
+    activeTouches.delete(event.pointerId);
+    if (activeTouches.size < 2) pinch = null;
+    if (mode === 'pinch' && activeTouches.size < 2) mode = 'none';
+    if (mode === 'pan' && activeTouches.size === 0) {
+      mode = 'none';
+      lastPointer = null;
+      wrap.classList.remove('panning');
+    }
+    if ((mode === 'axisH' || mode === 'axisV') && axisStart && axisCurrent) {
+      applyAxisZoom(mode === 'axisH' ? 'h' : 'v', axisStart, axisCurrent);
+      clearAxisMode();
+      mode = 'none';
+      draw();
+    } else if (mode === 'axisPending') {
+      clearAxisMode();
+      mode = 'none';
+    }
+    try { canvas.releasePointerCapture?.(event.pointerId); } catch (_err) {}
+  }
+
+  canvas.addEventListener('wheel', onWheel, {passive:false});
+  canvas.addEventListener('dblclick', onDblClick);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('contextmenu', event => event.preventDefault());
+  const resizeObserver = new ResizeObserver(() => {
+    if (!syncCanvasSize()) return;
+    if (isAtHome()) fitHome();
+    draw();
+  });
+  resizeObserver.observe(wrap);
+
+  return {
+    setImage(nextImage, opts={}) {
+      imageCanvas = nextImage;
+      imageWidth = nextImage?.width || 0;
+      imageHeight = nextImage?.height || 0;
+      if (opts.resetView !== false) fitHome();
+      draw();
+    },
+    redraw() { draw(); },
+    resetView() { fitHome(); draw(); },
+    resize() {
+      if (!syncCanvasSize()) return;
+      if (isAtHome()) fitHome();
+      draw();
+    },
+    destroy() {
+      destroyed = true;
+      resizeObserver.disconnect();
+      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('dblclick', onDblClick);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', endPointer);
+      canvas.removeEventListener('pointercancel', endPointer);
+    },
+  };
+}
+
+/**
+ * Top/bottom drag splitter between source and reference panes.
+ */
+function createSplitPane({container, first, second, divider, minFirst=140, minSecond=140, onResize=null}) {
+  let dragging = false;
+
+  function setEnabled(enabled) {
+    container.classList.toggle('single', !enabled);
+    divider.hidden = !enabled;
+    if (!enabled) {
+      first.style.flex = '';
+      first.style.height = '';
+      second.style.flex = '';
+      second.style.height = '';
+    } else if (!first.style.height) {
+      first.style.flex = '1 1 0';
+      second.style.flex = '1 1 0';
+    }
+    onResize?.();
+  }
+  function onPointerMove(event) {
+    if (!dragging) return;
+    const rect = container.getBoundingClientRect();
+    const dividerSize = divider.offsetHeight || 8;
+    let topHeight = event.clientY - rect.top;
+    topHeight = clamp(topHeight, minFirst, rect.height - minSecond - dividerSize);
+    first.style.flex = 'none';
+    first.style.height = `${Math.round(topHeight)}px`;
+    second.style.flex = '1 1 0';
+    second.style.height = '';
+    onResize?.();
+    event.preventDefault();
+  }
+  function stopDrag(event) {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('active');
+    document.body.style.removeProperty('cursor');
+    document.body.style.removeProperty('user-select');
+    try { divider.releasePointerCapture?.(event.pointerId); } catch (_err) {}
+    onResize?.();
+  }
+
+  divider.addEventListener('pointerdown', event => {
+    if (divider.hidden) return;
+    dragging = true;
+    divider.classList.add('active');
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    divider.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+  divider.addEventListener('pointermove', onPointerMove);
+  divider.addEventListener('pointerup', stopDrag);
+  divider.addEventListener('pointercancel', stopDrag);
+
+  return {setEnabled};
+}
+
+function drawChannelView(view, opts={}) {
+  if (compositeEnabled(view.group) && compositePair(view.group)) {
+    drawGroupComposite(view.group, opts);
+    return;
+  }
+  if (!view.canvas) return;
+  const bitmap = renderPlaneBitmap(view.values, view.displayShape, view.display);
+  if (!view.viewport) {
+    view.viewport = createImageViewport(view.canvas, {
+      getOverlay(ctx, viewScale) {
+        if (view.group !== 'reference' || !showScanPath.checked) return;
+        const scale = typeof viewScale === 'number'
+          ? viewScale
+          : Math.min(viewScale?.scaleX || 1, viewScale?.scaleY || 1);
+        drawScanPathOverlay(ctx, view.scanPath, view.lineRoi, scale);
+      },
+    });
+  }
+  view.viewport.setImage(bitmap, {resetView: opts.resetView !== false});
+}
+function drawGroupComposite(group, opts={}) {
+  const pair = compositePair(group);
+  const slot = compositeSlots[group];
+  if (!pair || !slot?.canvas) return;
+  const bitmap = renderCompositeBitmap(pair[0], pair[1]);
+  if (!slot.viewport) {
+    slot.viewport = createImageViewport(slot.canvas, {
+      getOverlay(ctx, viewScale) {
+        if (group !== 'reference' || !showScanPath.checked) return;
+        const scale = typeof viewScale === 'number'
+          ? viewScale
+          : Math.min(viewScale?.scaleX || 1, viewScale?.scaleY || 1);
+        drawScanPathOverlay(ctx, slot.scanPath, slot.lineRoi, scale);
+      },
+    });
+  }
+  slot.viewport.setImage(bitmap, {resetView: opts.resetView !== false});
 }
 function histogramForValues(values, binCount=96) {
   const sorted = sampledFiniteValues(values).sort((a, b) => a - b);
@@ -444,7 +1042,6 @@ function createContrastController(elements, redrawView) {
     histogram.bins.forEach((count, index) => {
       const x0 = left + index / histogram.bins.length * (right - left);
       const x1 = left + (index + 1) / histogram.bins.length * (right - left);
-      // Match the analyzer: log1p bar height so sparse high bins don't crush the rest.
       const frac = Math.log1p(count) / Math.log1p(maxCount);
       const barHeight = frac * (bottom - top);
       ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
@@ -484,7 +1081,7 @@ function createContrastController(elements, redrawView) {
     if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min)) return;
     view.display.min = min;
     view.display.max = max;
-    redrawView(view);
+    redrawView(view, {resetView:false});
     drawHistogram();
   }
   function updateDrag(event) {
@@ -498,7 +1095,7 @@ function createContrastController(elements, redrawView) {
     if (dragHandle === 'min') view.display.min = Math.min(value, view.display.max - epsilon);
     else view.display.max = Math.max(value, view.display.min + epsilon);
     syncControls();
-    redrawView(view);
+    redrawView(view, {resetView:false});
     drawHistogram();
     event.preventDefault();
   }
@@ -515,7 +1112,7 @@ function createContrastController(elements, redrawView) {
     const view = selectedView();
     if (!view) return;
     view.display.lut = elements.lut.value;
-    redrawView(view);
+    redrawView(view, {resetView:false});
   });
   elements.rangeButton.addEventListener('click', () => {
     if (elements.popover.hidden) openPopover(); else closePopover();
@@ -527,7 +1124,7 @@ function createContrastController(elements, redrawView) {
     if (!view) return;
     [view.display.min, view.display.max] = autoRange(view.values);
     syncControls();
-    redrawView(view);
+    redrawView(view, {resetView:false});
     drawHistogram();
   });
   elements.histogram.addEventListener('pointerdown', event => {
@@ -584,7 +1181,10 @@ function createContrastController(elements, redrawView) {
         elements.target.value = selectedId;
         syncControls();
       }
-      views.forEach(redrawView);
+      mountGroupLayout('source');
+      mountGroupLayout('reference');
+      redrawGroupDisplay('source', {resetView:true});
+      redrawGroupDisplay('reference', {resetView:true});
     },
     reset() {
       closePopover();
@@ -594,9 +1194,7 @@ function createContrastController(elements, redrawView) {
       elements.card.hidden = true;
     },
     redrawGroup(group) {
-      views.forEach(view => {
-        if (view.group === group) redrawView(view);
-      });
+      redrawGroupDisplay(group, {resetView:false});
     },
   };
 }
@@ -606,29 +1204,19 @@ function axisSummary(plane) {
   ).join(' · ');
 }
 async function renderResources(container, resources, plane, group, prefix, reference=null) {
-  container.replaceChildren();
+  // Data only — DOM cards are mounted by mountGroupLayout (solo or composite).
   const views = [];
+  const metaText = `${plane.shape[0]} × ${plane.shape[1]} · ${axisSummary(plane)}`;
   for (const resource of resources) {
-    const card = document.createElement('article');
-    card.className = 'card';
-    const title = document.createElement('h2');
-    title.textContent = `${prefix} ${resource.index}${resource.name ? ` · ${resource.name}` : ''}`;
-    const meta = document.createElement('p');
-    meta.className = 'meta';
-    meta.textContent = `${plane.shape[0]} × ${plane.shape[1]} · ${axisSummary(plane)}`;
-    const wrap = document.createElement('div');
-    wrap.className = 'canvas-wrap';
-    const canvas = document.createElement('canvas');
-    wrap.appendChild(canvas);
-    card.append(title, meta, wrap);
-    container.appendChild(card);
     const values = await fetchPlane(resource, plane);
     const displayPlane = transposePlane(values, plane.shape);
     views.push({
       id: `${group}:${resource.index}`,
       group,
+      channelIndex: resource.index,
       label: `${prefix} ${resource.index}${resource.name ? ` · ${resource.name}` : ''}`,
-      canvas,
+      metaText,
+      canvas: null,
       values: displayPlane.values,
       displayShape: displayPlane.shape,
       sourceShape: plane.shape,
@@ -643,6 +1231,9 @@ async function renderOpen(payload) {
   sessionPre.textContent = JSON.stringify(session, null, 2);
   headerPre.textContent = JSON.stringify(payload.header, null, 2);
   responsePre.textContent = JSON.stringify(payload, null, 2);
+  destroyActiveViews();
+  sourceComposite.checked = false;
+  referenceComposite.checked = false;
   const views = await renderResources(
     channelsEl,
     payload.channels,
@@ -653,6 +1244,7 @@ async function renderOpen(payload) {
   const reference = payload.reference;
   referenceEmptyEl.hidden = Boolean(reference);
   referencesEl.replaceChildren();
+  channelsEl.replaceChildren();
   if (reference) {
     const hasScanPath = scanPathPoints(reference.scanPath, reference.lineRoi).length > 0;
     scanPathControl.hidden = !hasScanPath;
@@ -668,9 +1260,32 @@ async function renderOpen(payload) {
   } else {
     scanPathControl.hidden = true;
     showScanPath.disabled = true;
+    referenceCompositeControl.hidden = true;
+    referenceComposite.checked = false;
   }
+  activeViews = views;
+  updateCompositeControls();
+  splitPane.setEnabled(Boolean(reference));
   contrastController.setViews(views);
 }
+function onCompositeChange(group) {
+  mountGroupLayout(group);
+  redrawGroupDisplay(group, {resetView:true});
+  activeViews.forEach(view => view.viewport?.resize());
+  compositeSlots.source?.viewport?.resize();
+  compositeSlots.reference?.viewport?.resize();
+}
+const splitPane = createSplitPane({
+  container: imageSplit,
+  first: sourcePane,
+  second: referencePane,
+  divider: imageSplitDivider,
+  onResize() {
+    activeViews.forEach(view => view.viewport?.resize());
+    compositeSlots.source?.viewport?.resize();
+    compositeSlots.reference?.viewport?.resize();
+  },
+});
 const contrastController = createContrastController(
   {
     card: document.getElementById('contrastCard'),
@@ -710,6 +1325,8 @@ async function runOpen() {
 pickBtn.addEventListener('click', runOpen);
 closeBtn.addEventListener('click', deleteCurrentSession);
 showScanPath.addEventListener('change', () => contrastController.redrawGroup('reference'));
+sourceComposite.addEventListener('change', () => onCompositeChange('source'));
+referenceComposite.addEventListener('change', () => onCompositeChange('reference'));
 loadServerInfo();
 </script>
 </body>

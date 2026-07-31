@@ -29,7 +29,9 @@ The demo intentionally exercises the complete baseline client lifecycle:
 9. transpose immediately before canvas display
 10. optional reference `scanPath` / `lineRoi` overlay (display-only)
 11. display-only contrast (LUT + intensity range) on stored float planes
-12. `DELETE /api/v2/sessions/{sessionId}` (explicit **Delete session**, or automatically when opening a new file)
+12. interactive per-image navigation (wheel/pinch zoom, H/V axis-zoom drag, Shift+pan, double-click home; unequal planes stretch-fill the wrap)
+13. optional per-group **Composite** (source and reference independently): ch0 green + ch1 magenta from each channel’s range
+14. `DELETE /api/v2/sessions/{sessionId}` (explicit **Delete session**, or automatically when opening a new file)
 
 The maintained demo UI does not expose `POST /api/v2/open`. That path remains part of the HTTP API for other clients.
 
@@ -43,7 +45,7 @@ Immediately before canvas rendering, the demo calls `transposePlane()` for both 
 
 ## Display-only controls
 
-Contrast LUTs and min/max range, and the reference scan-path overlay, affect canvas drawing only. They do not rewrite session floats or change the HTTP responses.
+Contrast (per-channel LUT + min/max range), per-pane **Composite** (fixed green/magenta for ch0/ch1), and the reference scan-path overlay affect display only. They do not change the underlying image data or HTTP responses.
 
 ## Compatibility
 

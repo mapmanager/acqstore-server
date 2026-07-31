@@ -33,7 +33,24 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
 
     assert 'function transposePlane(values, shape)' in html
     assert 'const displayPlane = transposePlane(values, plane.shape)' in html
-    assert 'function drawPlane(canvas, values, shape, display)' in html
+    assert 'function renderPlaneBitmap(values, shape, display)' in html
+    assert 'function createImageViewport(canvas, options={})' in html
+    assert 'function createSplitPane({container, first, second, divider' in html
+    assert 'Shift+drag: pan' in html
+    assert 'axis-zooming' in html
+    assert 'let scaleX = 1;' in html
+    assert 'let scaleY = 1;' in html
+    assert "mode = 'axisPending'" in html
+    assert 'Stretch kymograph' in html
+    assert 'flex:1 1 auto; min-height:120px' in html
+    assert 'id="sourceComposite"' in html
+    assert 'id="referenceComposite"' in html
+    assert 'function renderCompositeBitmap(viewA, viewB)' in html
+    assert 'function mountGroupLayout(group)' in html
+    assert 'Wheel or pinch to zoom' not in html
+    assert 'Composite (per pane):' not in html
+    assert '<summary>AcqStore header</summary>' in html
+    assert html.index('<summary>Open response</summary>') < html.index('<summary>Session</summary>')
     assert 'array dimension 1 horizontally' not in html
     assert '>Open File</button>' in html
     assert 'Server-accessible path' not in html
@@ -43,7 +60,7 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     assert '<summary>Session</summary>' in html
     assert '<summary>Open response</summary>' in html
     assert 'id="showScanPath" type="checkbox" checked' in html
-    assert 'function drawScanPath(canvas, sourceShape, scanPath, lineRoi)' in html
+    assert 'function drawScanPathOverlay(ctx, scanPath, lineRoi, viewScale)' in html
     assert 'scanPathPoints(reference.scanPath, reference.lineRoi)' in html
     assert "contrastController.redrawGroup('reference')" in html
     assert 'function createContrastController(elements, redrawView)' in html

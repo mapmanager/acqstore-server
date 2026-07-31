@@ -1,20 +1,18 @@
 # Status window
 
-When you start the packaged app, a small status window stays open while the local server is running.
+When you start the app, a status window stays open while the local server is running.
 
 ![AcqStore Server status window](../assets/acqstore-server-gui.png)
 
-The screenshot may lag behind the latest UI; the header and button table below match the current window.
-
 ## Header
 
-The top row shows **AcqStore Server**, the app version, and **Documentation** (opens the public MkDocs site at [https://mapmanager.github.io/acqstore-server/](https://mapmanager.github.io/acqstore-server/)).
+The top row shows the app name (`acqstore_server`), the version (for example `v0.1.0`), and **Documentation** (opens [this documentation site](https://mapmanager.github.io/acqstore-server/)).
 
 ## Buttons
 
 | Button | What it does |
 |---|---|
-| **Open demo** | Opens the built-in browser demo at `http://127.0.0.1:8767/demo/v2/` |
+| **Open demo** | Opens the built-in browser demo at `http://127.0.0.1:8767/demo/v2/` — see [Built-in demo](demo.md) |
 | **API docs (/docs)** | Opens live Swagger for API v2 at `http://127.0.0.1:8767/docs` |
 | **Show health** | Calls `GET /api/v2/health` and writes the result into the window log |
 | **Open log** | Opens the on-disk log file in your default app |
