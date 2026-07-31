@@ -29,6 +29,17 @@ def test_v2_demo_file_exists_and_exercises_client_lifecycle() -> None:
     for term in required_contract_terms:
         assert term in html
 
+    assert 'state.activeViews' in html
+    assert 'state.compositeSlots' in html
+    assert 'state.currentSessionId' in html
+    assert 'function ensureImageViewport(target,' in html
+    assert 'function resizeAllViewports()' in html
+    assert 'Display orientation invariants' in html
+    set_views = html.split('setViews(nextViews)', 1)[1].split('reset()', 1)[0]
+    assert 'mountGroupLayout' not in set_views
+    assert 'redrawGroupDisplay' not in set_views
+    assert 'mountContrastPanels' in set_views
+
     assert '`${API}/health`' not in html
     assert '`${API}/capabilities`' not in html
     assert 'function transposePlane(values, shape)' in html

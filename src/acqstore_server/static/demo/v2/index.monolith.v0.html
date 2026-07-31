@@ -178,7 +178,6 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
   <pre id="sessionPre">{}</pre>
 </details>
 <script>
-// --- app bootstrap / DOM refs ---
 const API = '/api/v2';
 const pickBtn = document.getElementById('pickBtn');
 const statusEl = document.getElementById('status');
@@ -202,12 +201,10 @@ const imageSplit = document.getElementById('imageSplit');
 const sourcePane = document.getElementById('sourcePane');
 const referencePane = document.getElementById('referencePane');
 const imageSplitDivider = document.getElementById('imageSplitDivider');
-const state = {
-  currentSessionId: null,
-  activeViews: [],
-  /** Per-group display slots when Composite is on (independent source vs reference). */
-  compositeSlots: {source: null, reference: null},
-};
+let currentSessionId = null;
+let activeViews = [];
+/** Per-group display slots when Composite is on (independent source vs reference). */
+const compositeSlots = {source:null, reference:null};
 function setBusy(busy) {
   pickBtn.disabled = busy;
 }
@@ -215,7 +212,6 @@ function setStatus(message, kind='') {
   statusEl.className = 'status ' + kind;
   statusEl.textContent = message;
 }
-// --- api ---
 async function jsonRequest(url, body) {
   const response = await fetch(url, {
     method: 'POST',
@@ -236,17 +232,16 @@ async function getJson(url, options={}) {
   }
   return payload;
 }
-// --- session view state ---
 function destroyActiveViews() {
-  state.activeViews.forEach(view => view.viewport?.destroy());
-  state.activeViews = [];
-  for (const group of Object.keys(state.compositeSlots)) {
-    state.compositeSlots[group]?.viewport?.destroy();
-    state.compositeSlots[group] = null;
+  activeViews.forEach(view => view.viewport?.destroy());
+  activeViews = [];
+  for (const group of Object.keys(compositeSlots)) {
+    compositeSlots[group]?.viewport?.destroy();
+    compositeSlots[group] = null;
   }
 }
 function groupViews(group) {
-  return state.activeViews
+  return activeViews
     .filter(view => view.group === group)
     .slice()
     .sort((a, b) => a.channelIndex - b.channelIndex);
@@ -285,14 +280,6 @@ function updateAxesControls() {
   if (!sourceHas) sourceAxes.checked = false;
   if (!referenceHas) referenceAxes.checked = false;
 }
-// --- plane / orientation / axes ---
-/*
- * Display orientation invariants (keep in sync):
- * 1) API plane is row-major [dim0, dim1]; server never transposes.
- * 2) Client transposePlane() before canvas: display width ← dim0, height ← dim1.
- * 3) Axis mapping: X ← dim0, Y ← dim1 (see displayAxesFromPlane).
- * 4) Viewport draw flips Y so physical 0 is at the image bottom (plot-style).
- */
 function displayAxesFromPlane(plane) {
   const byDim = {};
   for (const axis of plane.axes || []) byDim[axis.arrayDimension] = axis;
@@ -470,15 +457,14 @@ function drawAxisLabels(ctx, state) {
   }
   ctx.restore();
 }
-// --- layout mount ---
 function destroyGroupViewports(group) {
   groupViews(group).forEach(view => {
     view.viewport?.destroy();
     view.viewport = null;
     view.canvas = null;
   });
-  state.compositeSlots[group]?.viewport?.destroy();
-  state.compositeSlots[group] = null;
+  compositeSlots[group]?.viewport?.destroy();
+  compositeSlots[group] = null;
 }
 function mountGroupLayout(group) {
   const container = group === 'source' ? channelsEl : referencesEl;
@@ -503,7 +489,7 @@ function mountGroupLayout(group) {
     wrap.appendChild(canvas);
     card.append(title, meta, wrap);
     container.appendChild(card);
-    state.compositeSlots[group] = {
+    compositeSlots[group] = {
       canvas,
       viewport: null,
       axes: first.axes,
@@ -535,7 +521,6 @@ function redrawGroupDisplay(group, opts={}) {
   groupViews(group).forEach(view => drawChannelView(view, opts));
 }
 
-// --- plane decode / transpose / stats ---
 async function fetchPlane(resource, plane) {
   const response = await fetch(resource.dataUrl, {cache:'no-store'});
   if (!response.ok) throw new Error(`binary fetch failed: ${response.status}`);
@@ -587,7 +572,6 @@ function autoRange(values) {
   }
   return [min, max];
 }
-// --- lut / render ---
 function rgbStops(t, stops) {
   t = clamp(t, 0, 1);
   for (let index = 0; index < stops.length - 1; index++) {
@@ -693,7 +677,6 @@ function renderCompositeBitmap(viewA, viewB) {
   offscreen.getContext('2d').putImageData(image, 0, 0);
   return offscreen;
 }
-// --- scan path ---
 function scanPathPoints(scanPath, lineRoi) {
   if (
     scanPath &&
@@ -735,7 +718,6 @@ function drawScanPathOverlay(ctx, scanPath, lineRoi, viewScale) {
   ctx.restore();
 }
 
-// --- viewport ---
 /**
  * Interactive viewport for one channel canvas.
  * Wheel/pinch: isotropic zoom · Shift+drag: pan · Double-click: home.
@@ -1099,7 +1081,6 @@ function createImageViewport(canvas, options={}) {
   };
 }
 
-// --- split pane ---
 /**
  * Top/bottom drag splitter between source and reference panes.
  */
@@ -1159,24 +1140,6 @@ function createSplitPane({container, first, second, divider, minFirst=0, minSeco
   return {setEnabled};
 }
 
-// --- layout / composite draw ---
-function ensureImageViewport(target, {canvas, group, getScanPath, getLineRoi, getAxes}) {
-  if (target.viewport) return target.viewport;
-  target.viewport = createImageViewport(canvas, {
-    getOverlay(ctx, viewScale) {
-      if (group !== 'reference' || !showScanPath.checked) return;
-      const scale = typeof viewScale === 'number'
-        ? viewScale
-        : Math.min(viewScale?.scaleX || 1, viewScale?.scaleY || 1);
-      drawScanPathOverlay(ctx, getScanPath(), getLineRoi(), scale);
-    },
-    getAxisLabels(ctx, drawState) {
-      if (!axesEnabled(group)) return;
-      drawAxisLabels(ctx, {...drawState, axes: getAxes()});
-    },
-  });
-  return target.viewport;
-}
 function drawChannelView(view, opts={}) {
   if (compositeEnabled(view.group) && compositePair(view.group)) {
     drawGroupComposite(view.group, opts);
@@ -1184,27 +1147,43 @@ function drawChannelView(view, opts={}) {
   }
   if (!view.canvas) return;
   const bitmap = renderPlaneBitmap(view.values, view.displayShape, view.display);
-  ensureImageViewport(view, {
-    canvas: view.canvas,
-    group: view.group,
-    getScanPath: () => view.scanPath,
-    getLineRoi: () => view.lineRoi,
-    getAxes: () => view.axes,
-  });
+  if (!view.viewport) {
+    view.viewport = createImageViewport(view.canvas, {
+      getOverlay(ctx, viewScale) {
+        if (view.group !== 'reference' || !showScanPath.checked) return;
+        const scale = typeof viewScale === 'number'
+          ? viewScale
+          : Math.min(viewScale?.scaleX || 1, viewScale?.scaleY || 1);
+        drawScanPathOverlay(ctx, view.scanPath, view.lineRoi, scale);
+      },
+      getAxisLabels(ctx, state) {
+        if (!axesEnabled(view.group)) return;
+        drawAxisLabels(ctx, {...state, axes: view.axes});
+      },
+    });
+  }
   view.viewport.setImage(bitmap, {resetView: opts.resetView !== false});
 }
 function drawGroupComposite(group, opts={}) {
   const pair = compositePair(group);
-  const slot = state.compositeSlots[group];
+  const slot = compositeSlots[group];
   if (!pair || !slot?.canvas) return;
   const bitmap = renderCompositeBitmap(pair[0], pair[1]);
-  ensureImageViewport(slot, {
-    canvas: slot.canvas,
-    group,
-    getScanPath: () => slot.scanPath,
-    getLineRoi: () => slot.lineRoi,
-    getAxes: () => slot.axes,
-  });
+  if (!slot.viewport) {
+    slot.viewport = createImageViewport(slot.canvas, {
+      getOverlay(ctx, viewScale) {
+        if (group !== 'reference' || !showScanPath.checked) return;
+        const scale = typeof viewScale === 'number'
+          ? viewScale
+          : Math.min(viewScale?.scaleX || 1, viewScale?.scaleY || 1);
+        drawScanPathOverlay(ctx, slot.scanPath, slot.lineRoi, scale);
+      },
+      getAxisLabels(ctx, state) {
+        if (!axesEnabled(group)) return;
+        drawAxisLabels(ctx, {...state, axes: slot.axes});
+      },
+    });
+  }
   slot.viewport.setImage(bitmap, {resetView: opts.resetView !== false});
 }
 function histogramForValues(values, binCount=96) {
@@ -1229,7 +1208,6 @@ const LUT_OPTION_LABELS = {
   gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green',
   fire:'Fire', hot:'Hot', viridis:'Viridis', magma:'Magma', inferno:'Inferno', cividis:'Cividis',
 };
-// --- contrast ---
 function createContrastController(elements, redrawView) {
   let views = new Map();
   let selectedId = null;
@@ -1457,6 +1435,10 @@ function createContrastController(elements, redrawView) {
         views.set(view.id, view);
       }
       mountContrastPanels();
+      mountGroupLayout('source');
+      mountGroupLayout('reference');
+      redrawGroupDisplay('source', {resetView:true});
+      redrawGroupDisplay('reference', {resetView:true});
     },
     reset() {
       closePopover();
@@ -1472,7 +1454,6 @@ function createContrastController(elements, redrawView) {
     },
   };
 }
-// --- app orchestration ---
 async function renderResources(resources, plane, group, reference=null) {
   // Data only — DOM cards are mounted by mountGroupLayout (solo or composite).
   const views = [];
@@ -1527,32 +1508,25 @@ async function renderOpen(payload) {
     referenceCompositeControl.hidden = true;
     referenceComposite.checked = false;
   }
-  state.activeViews = views;
+  activeViews = views;
   updateCompositeControls();
   updateAxesControls();
   splitPane.setEnabled(Boolean(reference));
   contrastController.setViews(views);
-  mountGroupLayout('source');
-  mountGroupLayout('reference');
-  redrawGroupDisplay('source', {resetView:true});
-  redrawGroupDisplay('reference', {resetView:true});
 }
 function redrawAxesOnly(group) {
-  if (compositeEnabled(group) && state.compositeSlots[group]?.viewport) {
-    state.compositeSlots[group].viewport.redraw();
+  if (compositeEnabled(group) && compositeSlots[group]?.viewport) {
+    compositeSlots[group].viewport.redraw();
     return;
   }
   groupViews(group).forEach(view => view.viewport?.redraw());
 }
-function resizeAllViewports() {
-  state.activeViews.forEach(view => view.viewport?.resize());
-  state.compositeSlots.source?.viewport?.resize();
-  state.compositeSlots.reference?.viewport?.resize();
-}
 function onCompositeChange(group) {
   mountGroupLayout(group);
   redrawGroupDisplay(group, {resetView:true});
-  resizeAllViewports();
+  activeViews.forEach(view => view.viewport?.resize());
+  compositeSlots.source?.viewport?.resize();
+  compositeSlots.reference?.viewport?.resize();
 }
 const splitPane = createSplitPane({
   container: imageSplit,
@@ -1560,7 +1534,9 @@ const splitPane = createSplitPane({
   second: referencePane,
   divider: imageSplitDivider,
   onResize() {
-    resizeAllViewports();
+    activeViews.forEach(view => view.viewport?.resize());
+    compositeSlots.source?.viewport?.resize();
+    compositeSlots.reference?.viewport?.resize();
   },
 });
 const contrastController = createContrastController(
@@ -1579,7 +1555,7 @@ const contrastController = createContrastController(
 async function runOpen() {
   setBusy(true); setStatus('Opening acquisition…');
   try {
-    const previousSessionId = state.currentSessionId;
+    const previousSessionId = currentSessionId;
     const payload = await jsonRequest(`${API}/pick-and-open`, {});
     if (previousSessionId && previousSessionId !== payload.sessionId) {
       try {
@@ -1588,7 +1564,7 @@ async function runOpen() {
         console.warn(`Could not delete previous session ${previousSessionId}:`, error);
       }
     }
-    state.currentSessionId = payload.sessionId;
+    currentSessionId = payload.sessionId;
     await renderOpen(payload);
     setStatus(`Loaded ${payload.source.name}: ${payload.channels.length} channel(s).`, 'ok');
   } catch (error) {
