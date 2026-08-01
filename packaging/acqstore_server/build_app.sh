@@ -84,17 +84,19 @@ _remove_dir_with_retries "$DIST_DIR"
 _remove_dir_with_retries "$BUILD_DIR"
 mkdir -p "$DIST_DIR" "$BUILD_DIR"
 
-# Runtime for the frozen app (status UI + API).
+# Runtime for the frozen app: NiceGUI status UI + ServerController API (two ports).
 export ACQSTORE_SERVER_NATIVE=1
 export ACQSTORE_SERVER_HOST="${ACQSTORE_SERVER_HOST:-127.0.0.1}"
 export ACQSTORE_SERVER_PORT="${ACQSTORE_SERVER_PORT:-8767}"
+export ACQSTORE_SERVER_UI_HOST="${ACQSTORE_SERVER_UI_HOST:-127.0.0.1}"
+export ACQSTORE_SERVER_UI_PORT="${ACQSTORE_SERVER_UI_PORT:-8766}"
 
 ARGS=(
   --windowed
   --clean
   --name "$APP_NAME"
   --osx-bundle-identifier "$BUNDLE_ID"
-  # Bundle demo HTML for FileResponse /demo/ inside the frozen app.
+  # Bundle demo HTML for /demo/v2/ inside the frozen app (served by API on :8767).
   --add-data "$REPO_ROOT/src/acqstore_server/static:acqstore_server/static"
 )
 
@@ -123,6 +125,8 @@ echo ""
 echo "[build] Done: $APP_PATH"
 echo "[build] Smoke test:"
 echo "  open '$APP_PATH'"
-echo "[build] Then open http://127.0.0.1:${ACQSTORE_SERVER_PORT}/demo/ from the status window."
+echo "[build] Status UI listens on http://${ACQSTORE_SERVER_UI_HOST}:${ACQSTORE_SERVER_UI_PORT}"
+echo "[build] API / demo / docs on http://${ACQSTORE_SERVER_HOST}:${ACQSTORE_SERVER_PORT}"
+echo "[build] Demo: http://${ACQSTORE_SERVER_HOST}:${ACQSTORE_SERVER_PORT}/demo/v2/"
 echo "[build] When ready to sign/notarize:"
 echo "  ./packaging/acqstore_server/sign_notarize_release.sh"

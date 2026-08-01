@@ -13,7 +13,7 @@ export APP_NAME="${APP_NAME:-AcqStore Server}"
 # URL/path-safe slug for zip filenames (spaces in APP_NAME are awkward in CI globs).
 export RELEASE_SLUG="${RELEASE_SLUG:-AcqStore-Server}"
 export BUNDLE_ID="${BUNDLE_ID:-com.mapmanager.acqstore-server}"
-# Desktop entry enables native NiceGUI status window + same API/demo routes.
+# Desktop entry: NiceGUI status UI (default :8766) + ServerController API (:8767).
 export MAIN_PY="${MAIN_PY:-$REPO_ROOT/src/acqstore_server/desktop.py}"
 
 # Optional icon. Packaging assets live in packaging/assets/.
@@ -40,9 +40,13 @@ export APP_MAIN_BIN="${APP_MAIN_BIN:-$APP_PATH/Contents/MacOS/${APP_NAME}}"
 export PRE_NOTARIZE_ZIP="${PRE_NOTARIZE_ZIP:-$DIST_DIR/${RELEASE_SLUG}-pre-notarize.zip}"
 export NOTARY_SUBMISSION_ID_FILE="${NOTARY_SUBMISSION_ID_FILE:-$DIST_DIR/notary_submission_id.txt}"
 
-# Packaged runtime defaults.
+# Packaged runtime defaults (two listeners).
+# API (FastAPI / demo /docs): ACQSTORE_SERVER_HOST:ACQSTORE_SERVER_PORT
+# Status UI (NiceGUI native window): ACQSTORE_SERVER_UI_HOST:ACQSTORE_SERVER_UI_PORT
 export ACQSTORE_SERVER_HOST="${ACQSTORE_SERVER_HOST:-127.0.0.1}"
 export ACQSTORE_SERVER_PORT="${ACQSTORE_SERVER_PORT:-8767}"
+export ACQSTORE_SERVER_UI_HOST="${ACQSTORE_SERVER_UI_HOST:-127.0.0.1}"
+export ACQSTORE_SERVER_UI_PORT="${ACQSTORE_SERVER_UI_PORT:-8766}"
 export ACQSTORE_SERVER_NATIVE="${ACQSTORE_SERVER_NATIVE:-1}"
 
 # Release artifact naming.

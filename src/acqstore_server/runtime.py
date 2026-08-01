@@ -20,6 +20,7 @@ import uvicorn
 from acqstore_server.app import create_app, resolve_bind
 from acqstore_server.constants import DEFAULT_HOST, DEFAULT_PORT, PickFileFn
 from acqstore_server.logging_setup import ensure_logging, get_logger
+from acqstore_server.ports import PortReclaimError, list_listening_pids, reclaim_port
 from acqstore_server.v2.routes import OpenAcquisitionFn
 from acqstore_server.v2.session_store import SessionStore
 
@@ -83,6 +84,7 @@ class ServerController:
         pick_file_fn: PickFileFn | None = None,
         open_fn: OpenAcquisitionFn | None = None,
         ready_timeout_s: float = 10.0,
+        reclaim: bool = False,
     ) -> ServerStatus:
         """Start the HTTP API in a daemon thread and wait until it accepts connections.
 
@@ -95,29 +97,39 @@ class ServerController:
             pick_file_fn: Optional picker override for :func:`create_app`.
             open_fn: Optional opener override for :func:`create_app`.
             ready_timeout_s: Seconds to wait for the server to become reachable.
+            reclaim: When true, stop any managed server and kill foreign
+                LISTEN processes on the target port before binding.
 
         Returns:
             Status after a successful start (``healthy`` probed once).
 
         Raises:
-            AlreadyRunningError: Controller already has a live server.
+            AlreadyRunningError: Controller already has a live server and
+                ``reclaim`` is false.
             BindError: Invalid host/port.
             PortInUseError: Address already in use before start, or bind failed.
+            PortReclaimError: ``reclaim`` could not free the port.
             ServerError: Server thread exited or did not become ready in time.
         """
         ensure_logging()
         with self._lock:
-            if self.is_running:
+            if self.is_running and not reclaim:
                 raise AlreadyRunningError('AcqStore Server is already running')
             try:
                 resolved_host, resolved_port = resolve_bind(host, port)
             except ValueError as exc:
                 raise BindError(str(exc)) from exc
 
-            if _port_is_open(resolved_host, resolved_port):
-                raise PortInUseError(
-                    f'Port {resolved_port} is already in use on {resolved_host}'
-                )
+        if reclaim:
+            self.reclaim_port(port=resolved_port)
+        elif not _bind_available(resolved_host, resolved_port):
+            raise PortInUseError(
+                f'Port {resolved_port} is already in use on {resolved_host}'
+            )
+
+        with self._lock:
+            if self.is_running:
+                raise AlreadyRunningError('AcqStore Server is already running')
 
             if app is None:
                 create_kwargs: dict[str, Any] = {
@@ -174,6 +186,31 @@ class ServerController:
             f'Server did not become ready at '
             f'http://{resolved_host}:{resolved_port} within {ready_timeout_s}s'
         )
+
+    def reclaim_port(self, *, port: int | None = None) -> list[int]:
+        """Stop the managed API (if running) and kill foreign listeners on ``port``.
+
+        Args:
+            port: Port to free (default: this controller's configured API port).
+
+        Returns:
+            Foreign PIDs that were signaled.
+
+        Raises:
+            PortReclaimError: If the port cannot be freed.
+        """
+        target = int(port if port is not None else self._port)
+        if self.is_running and (port is None or int(port) == self._port):
+            self.stop()
+        try:
+            return reclaim_port(target)
+        except PortReclaimError:
+            raise
+
+    def list_port_listeners(self, *, port: int | None = None) -> list[int]:
+        """Return PIDs listening on ``port`` (default: configured API port)."""
+        target = int(port if port is not None else self._port)
+        return list_listening_pids(target)
 
     def stop(self, *, timeout_s: float = 5.0) -> ServerStatus:
         """Request shutdown and join the server thread.
@@ -256,6 +293,13 @@ class ServerController:
     def _run_server(self, server: uvicorn.Server) -> None:
         try:
             server.run()
+        except SystemExit as exc:
+            # uvicorn calls sys.exit(STARTUP_FAILURE) when bind fails.
+            message = f'Server failed to start (exit={exc.code})'
+            with self._lock:
+                self._last_error = message
+            logger.error(message)
+            return
         except OSError as exc:
             errno = getattr(exc, 'errno', None)
             if errno in {48, 98}:
@@ -301,11 +345,47 @@ class ServerController:
 
 
 def _port_is_open(host: str, port: int) -> bool:
+    """Return True if something accepts TCP connections on ``host:port``."""
     try:
         with socket.create_connection((host, port), timeout=0.2):
             return True
     except OSError:
         return False
+
+
+def _bind_available(host: str, port: int) -> bool:
+    """Return True if this process can bind a listen socket on ``host:port``."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        # Do not set SO_REUSEADDR: we want a real conflict with an existing LISTEN.
+        sock.bind((host, port))
+    except OSError:
+        return False
+    finally:
+        sock.close()
+    return True
+
+
+def bind_available(host: str, port: int) -> bool:
+    """Public wrapper for :func:`_bind_available` (CLI / desktop preflight)."""
+    return _bind_available(host, port)
+
+
+def looks_like_running_desktop(
+    *,
+    api_host: str,
+    api_port: int,
+    ui_host: str,
+    ui_port: int,
+) -> bool:
+    """Return True when both API and status-UI ports refuse a new bind.
+
+    That is the usual fingerprint of an already-open ``…desktop`` instance
+    (API on ``api_port``, NiceGUI on ``ui_port``).
+    """
+    return (not _bind_available(api_host, api_port)) and (
+        not _bind_available(ui_host, ui_port)
+    )
 
 
 def _probe_health(base_url: str) -> bool:

@@ -19,10 +19,12 @@ from acqstore_server.gui_defaults import setUpGuiDefaults
 from acqstore_server.logging_setup import get_logger, get_ui_log_text, log_file_path
 from acqstore_server.runtime import (
     AlreadyRunningError,
+    PortInUseError,
     ServerController,
     ServerError,
     ServerStatus,
 )
+from acqstore_server.ports import PortReclaimError
 
 logger = get_logger('status_ui')
 
@@ -106,14 +108,26 @@ def build_status_page(
             if status_label.text != text:
                 status_label.set_text(text)
 
-        def _start_api() -> None:
+        def _start_api(*, reclaim: bool = False) -> None:
             try:
-                status = controller.start(host=api_host, port=api_port)
+                status = controller.start(
+                    host=api_host,
+                    port=api_port,
+                    reclaim=reclaim,
+                )
             except AlreadyRunningError:
                 ui.notify('API server is already running.', type='warning')
                 _refresh_status()
                 return
-            except ServerError as exc:
+            except PortInUseError as exc:
+                logger.warning('Start API port busy: %s', exc)
+                ui.notify(
+                    f'Port busy: {exc}. Use Free API port or Start (reclaim).',
+                    type='warning',
+                )
+                _refresh_status()
+                return
+            except (ServerError, PortReclaimError) as exc:
                 logger.warning('Start API failed: %s', exc)
                 ui.notify(f'Start failed: {exc}', type='negative')
                 _refresh_status()
@@ -128,9 +142,47 @@ def build_status_page(
             ui.notify('API stopped.', type='info')
             _refresh_status()
 
+        def _list_api_listeners() -> None:
+            try:
+                pids = controller.list_port_listeners(port=api_port)
+            except PortReclaimError as exc:
+                ui.notify(f'List failed: {exc}', type='negative')
+                return
+            if not pids:
+                logger.info('No LISTEN pids on API port %s', api_port)
+                ui.notify(f'No listeners on API port {api_port}.', type='info')
+            else:
+                logger.info('LISTEN pids on API port %s: %s', api_port, pids)
+                ui.notify(f'API port {api_port} pids: {pids}', type='warning')
+
+        def _free_api_port() -> None:
+            try:
+                killed = controller.reclaim_port(port=api_port)
+            except PortReclaimError as exc:
+                logger.warning('Free API port failed: %s', exc)
+                ui.notify(f'Free API port failed: {exc}', type='negative')
+                _refresh_status()
+                return
+            if killed:
+                logger.info('Freed API port %s; signaled pids=%s', api_port, killed)
+                ui.notify(f'Freed port {api_port}; killed pids {killed}', type='positive')
+            else:
+                ui.notify(f'Port {api_port} already free.', type='info')
+            _refresh_status()
+
         with ui.row().classes('gap-2 flex-wrap'):
-            ui.button('Start API', on_click=_start_api).props('color=primary')
+            ui.button('Start API', on_click=lambda: _start_api(reclaim=False)).props(
+                'color=primary'
+            )
+            ui.button(
+                'Start API (reclaim)',
+                on_click=lambda: _start_api(reclaim=True),
+            ).props('outline color=primary')
             ui.button('Stop API', on_click=_stop_api).props('outline')
+            ui.button('List API port PIDs', on_click=_list_api_listeners).props('outline')
+            ui.button('Free API port', on_click=_free_api_port).props(
+                'outline color=negative'
+            )
 
             def _open_demo() -> None:
                 status = controller.status(probe_health=False)

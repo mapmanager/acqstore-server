@@ -221,24 +221,43 @@ def _resolve_ui_bind() -> tuple[str, int]:
 
 def main_uvicorn() -> None:
     """Run API-only uvicorn (no native window)."""
-    from acqstore_server.runtime import ServerController
+    from acqstore_server.runtime import (
+        PortInUseError,
+        ServerController,
+        looks_like_running_desktop,
+    )
 
     ensure_logging()
     host, port = _resolve_bind()
+    ui_host, ui_port = _resolve_ui_bind()
+
+    if looks_like_running_desktop(
+        api_host=host,
+        api_port=port,
+        ui_host=ui_host,
+        ui_port=ui_port,
+    ):
+        print(
+            f'[acqstore_server] AcqStore Server desktop already looks running '
+            f'(API {host}:{port}, UI {ui_host}:{ui_port}).\n'
+            f'  Use the open status window, or Quit that window first.\n'
+            f'  From the GUI: Free API port / Start API (reclaim) if needed.',
+            file=sys.stderr,
+        )
+        raise SystemExit(0)
+
     controller = ServerController()
     try:
         status = controller.start(host=host, port=port, app=app)
     except Exception as exc:  # noqa: BLE001 — CLI surfaces typed runtime errors
-        from acqstore_server.runtime import PortInUseError
-
         if isinstance(exc, PortInUseError):
             logger.error('Port %s already in use: %s', port, exc)
             print(
                 f'[acqstore_server] ERROR: port {port} is already in use.\n'
-                f'  Stop the old process, then retry:\n'
+                f'  If a desktop window is open, Quit it or use Free API port there.\n'
+                f'  Or inspect/kill the listener:\n'
                 f'    lsof -nP -iTCP:{port} -sTCP:LISTEN\n'
-                f'    kill $(lsof -nP -iTCP:{port} -sTCP:LISTEN -t)\n'
-                f'  See docs-dev/README.md (Dev run / stop).',
+                f'    kill $(lsof -nP -iTCP:{port} -sTCP:LISTEN -t)',
                 file=sys.stderr,
             )
             raise SystemExit(1) from exc
@@ -304,12 +323,45 @@ def main_native() -> None:
     from nicegui import app as nicegui_app
     from nicegui import ui
 
-    from acqstore_server.runtime import PortInUseError, ServerController, ServerError
+    from acqstore_server.runtime import (
+        PortInUseError,
+        ServerController,
+        ServerError,
+        bind_available,
+        looks_like_running_desktop,
+    )
     from acqstore_server.status_ui import build_status_page
 
     ensure_logging()
     api_host, api_port = _resolve_bind()
     ui_host, ui_port = _resolve_ui_bind()
+
+    if looks_like_running_desktop(
+        api_host=api_host,
+        api_port=api_port,
+        ui_host=ui_host,
+        ui_port=ui_port,
+    ):
+        print(
+            f'[acqstore_server] AcqStore Server already looks running '
+            f'(API {api_host}:{api_port}, UI {ui_host}:{ui_port}).\n'
+            f'  Use the existing status window.\n'
+            f'  Or Quit that window, then launch desktop again.',
+            file=sys.stderr,
+        )
+        raise SystemExit(0)
+
+    if not bind_available(ui_host, ui_port):
+        print(
+            f'[acqstore_server] ERROR: status UI port {ui_host}:{ui_port} is in use,\n'
+            f'  but the API port {api_host}:{api_port} may still be free.\n'
+            f'  Free or quit whatever holds {ui_port}, then retry:\n'
+            f'    lsof -nP -iTCP:{ui_port} -sTCP:LISTEN\n'
+            f'    kill $(lsof -nP -iTCP:{ui_port} -sTCP:LISTEN -t)',
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     controller = ServerController()
 
     try:
@@ -320,7 +372,8 @@ def main_native() -> None:
         print(
             f'[acqstore_server] WARNING: could not auto-start API on '
             f'{api_host}:{api_port}: {exc}\n'
-            f'  Use Start API in the status window after freeing the port.',
+            f'  Status UI will still open. Use Free API port or '
+            f'Start API (reclaim).',
             file=sys.stderr,
         )
     except ServerError as exc:

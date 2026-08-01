@@ -46,6 +46,8 @@ def test_native_status_ui_source_targets_v2_via_controller() -> None:
     assert 'ServerController' in source
     assert 'Start API' in source
     assert 'Stop API' in source
+    assert 'Free API port' in source
+    assert 'Start API (reclaim)' in source
     assert "/demo/v2/'" in source or '/demo/v2/' in source
     assert 'health_url' in source
     assert "PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'" in source
