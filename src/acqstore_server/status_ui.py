@@ -40,16 +40,11 @@ logger = get_logger('status_ui')
 PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'
 
 
-def format_status_line(
-    status: ServerStatus,
-    *,
-    ui_bind: str,
-    server_version: str | None = None,
-) -> str:
-    """Return a one-line status summary for the footer.
+def format_status_line(status: ServerStatus) -> str:
+    """Return a one-line status summary for the footer (server only).
 
-    User-facing copy says \"Server\" for the :8767 listener; \"UI\" is the
-    NiceGUI status window port (:8766).
+    The NiceGUI window bind port is an implementation detail — not shown here.
+    Package version lives in the header only.
     """
     if status.running and status.healthy:
         server_state = f'Server running (healthy) {status.base_url}'
@@ -59,21 +54,7 @@ def format_status_line(
         server_state = f'Server stopped ({status.host}:{status.port})'
     if status.error:
         server_state = f'{server_state} — {status.error}'
-    version_bit = (
-        f' | server {server_version}' if server_version else ''
-    )
-    return f'{server_state}{version_bit} | UI {ui_bind}'
-
-
-def format_header_versions(
-    *,
-    ui_version: str,
-    server_version: str | None,
-) -> str:
-    """Return header version text: local UI build and HTTP-reported server."""
-    if server_version:
-        return f'UI {ui_version} · server {server_version}'
-    return f'UI {ui_version} · server —'
+    return server_state
 
 
 def _open_path_with_default_app(path: Path) -> None:
@@ -110,16 +91,11 @@ def build_status_page(
     controller: ServerController,
     api_host: str,
     api_port: int,
-    ui_host: str,
-    ui_port: int,
 ) -> None:
     """Build the native status page as a client of ``controller``."""
     setUpGuiDefaults('text-xs')
 
     log_path = log_file_path()
-    ui_bind = f'{ui_host}:{ui_port}'
-    # Local package build (this process). Server package version comes from HTTP.
-    reported_server_version: list[str | None] = [None]
 
     ui.colors(primary='#38bdf8')
 
@@ -127,12 +103,7 @@ def build_status_page(
         with ui.row().classes('w-full items-center gap-2 flex-wrap'):
             ui.label(APP_NAME).classes('text-h6 text-primary')
             ui.label('|').classes('text-grey-6')
-            version_label = ui.label(
-                format_header_versions(
-                    ui_version=APP_VERSION,
-                    server_version=None,
-                )
-            ).classes('text-body2 text-grey-5')
+            ui.label(f'v{APP_VERSION}').classes('text-body2 text-grey-5')
             ui.label('|').classes('text-grey-6')
             docs_btn = ui.button(
                 'Documentation',
@@ -228,10 +199,7 @@ def build_status_page(
 
                 raw = await asyncio.to_thread(_fetch)
                 try:
-                    payload = json.loads(raw)
-                    text = json.dumps(payload, indent=2)
-                    if isinstance(payload, dict) and payload.get('serverVersion'):
-                        reported_server_version[0] = str(payload['serverVersion'])
+                    text = json.dumps(json.loads(raw), indent=2)
                 except json.JSONDecodeError:
                     text = raw
                 logger.info('Health %s\n%s', url, text)
@@ -240,7 +208,6 @@ def build_status_page(
                 logger.warning('Health request failed: %s — %s', url, exc)
                 ui.notify(f'Health check failed: {exc}', type='negative')
             _sync_controls()
-            _sync_version_labels()
 
         def _open_log() -> None:
             try:
@@ -309,28 +276,7 @@ def build_status_page(
             free_btn.set_enabled(True)
             open_log_btn.set_enabled(True)
 
-        def _sync_version_labels() -> None:
-            header = format_header_versions(
-                ui_version=APP_VERSION,
-                server_version=reported_server_version[0],
-            )
-            if version_label.text != header:
-                version_label.set_text(header)
-
-        def _read_server_version(health_url: str) -> str | None:
-            """HTTP client: read package version from ``/api/v2/health``."""
-            try:
-                with urllib.request.urlopen(health_url, timeout=1.5) as resp:
-                    payload = json.loads(resp.read().decode('utf-8'))
-            except Exception:  # noqa: BLE001 — UI probe; keep chrome responsive
-                return None
-            if not isinstance(payload, dict):
-                return None
-            value = payload.get('serverVersion')
-            return str(value) if value else None
-
         _sync_controls()
-        _sync_version_labels()
 
         # In-memory process buffer via get_ui_log_text(); see module docstring.
         ui.label('Log').classes('text-caption text-grey-5')
@@ -349,38 +295,13 @@ def build_status_page(
 
     with ui.footer().classes('bg-grey-10 text-grey-4 q-px-md q-py-xs'):
         footer = ui.label(
-            format_status_line(
-                controller.status(),
-                ui_bind=ui_bind,
-                server_version=reported_server_version[0],
-            )
+            format_status_line(controller.status())
         ).classes('text-caption')
-        last_version_probe_s = [0.0]
 
-        async def _refresh_footer_and_controls() -> None:
-            status = controller.status()
-            if not status.running:
-                reported_server_version[0] = None
-            else:
-                now = time.monotonic()
-                # Re-probe health occasionally as an HTTP client (not in-process).
-                if (
-                    reported_server_version[0] is None
-                    or (now - last_version_probe_s[0]) >= 2.0
-                ):
-                    reported_server_version[0] = await asyncio.to_thread(
-                        _read_server_version,
-                        status.health_url,
-                    )
-                    last_version_probe_s[0] = now
-            text = format_status_line(
-                status,
-                ui_bind=ui_bind,
-                server_version=reported_server_version[0],
-            )
+        def _refresh_footer_and_controls() -> None:
+            text = format_status_line(controller.status())
             if footer.text != text:
                 footer.set_text(text)
-            _sync_version_labels()
             _sync_controls()
 
         ui.timer(0.5, _refresh_footer_and_controls)

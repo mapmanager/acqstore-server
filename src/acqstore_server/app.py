@@ -401,8 +401,6 @@ def main_native() -> None:
             controller=controller,
             api_host=api_host,
             api_port=api_port,
-            ui_host=ui_host,
-            ui_port=ui_port,
         )
 
     api_base = f'http://{api_host}:{api_port}'

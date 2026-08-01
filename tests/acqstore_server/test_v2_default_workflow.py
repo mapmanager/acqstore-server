@@ -25,8 +25,13 @@ def test_cli_startup_text_points_to_v2_demo(monkeypatch, capsys) -> None:
             return None
 
     monkeypatch.setattr(app_module, '_resolve_bind', lambda: ('127.0.0.1', 8767))
+    monkeypatch.setattr(app_module, '_resolve_ui_bind', lambda: ('127.0.0.1', 8766))
     monkeypatch.setattr(app_module, 'ensure_logging', lambda: None)
     monkeypatch.setattr(app_module, 'log_file_path', lambda: Path('/tmp/server.log'))
+    monkeypatch.setattr(
+        'acqstore_server.runtime.looks_like_running_desktop',
+        lambda **_kwargs: False,
+    )
     monkeypatch.setattr(
         'acqstore_server.runtime.ServerController',
         FakeController,
@@ -59,8 +64,8 @@ def test_native_status_ui_source_targets_v2_via_controller() -> None:
     assert 'set_enabled' in source
     assert '.tooltip(' in source
     assert "/demo/v2/'" in source or '/demo/v2/' in source
-    assert 'format_header_versions' in source
-    assert 'serverVersion' in source
+    assert "f'v{APP_VERSION}'" in source or 'v{APP_VERSION}' in source
+    assert 'format_header_versions' not in source
     assert 'health_url' in source
     assert "PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'" in source
 

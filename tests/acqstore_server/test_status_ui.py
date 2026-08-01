@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from acqstore_server.runtime import ServerStatus
-from acqstore_server.status_ui import format_header_versions, format_status_line
+from acqstore_server.status_ui import format_status_line
 
 
 def test_format_status_line_healthy() -> None:
@@ -14,16 +14,12 @@ def test_format_status_line_healthy() -> None:
         base_url='http://127.0.0.1:8767',
         healthy=True,
     )
-    text = format_status_line(
-        status,
-        ui_bind='127.0.0.1:8766',
-        server_version='0.2.0',
-    )
+    text = format_status_line(status)
     assert 'Server running' in text
     assert 'healthy' in text
     assert 'http://127.0.0.1:8767' in text
-    assert 'server 0.2.0' in text
-    assert 'UI 127.0.0.1:8766' in text
+    assert 'UI ' not in text
+    assert '8766' not in text
 
 
 def test_format_status_line_stopped_with_error() -> None:
@@ -35,18 +31,10 @@ def test_format_status_line_stopped_with_error() -> None:
         healthy=False,
         error='port in use',
     )
-    text = format_status_line(status, ui_bind='127.0.0.1:8766')
+    text = format_status_line(status)
     assert 'Server stopped' in text
     assert 'port in use' in text
-
-
-def test_format_header_versions_shows_ui_and_server() -> None:
-    assert format_header_versions(ui_version='0.2.0', server_version=None) == (
-        'UI 0.2.0 · server —'
-    )
-    assert format_header_versions(ui_version='0.2.0', server_version='0.2.0') == (
-        'UI 0.2.0 · server 0.2.0'
-    )
+    assert 'UI ' not in text
 
 
 def test_force_process_exit_schedules_os_exit(monkeypatch) -> None:
