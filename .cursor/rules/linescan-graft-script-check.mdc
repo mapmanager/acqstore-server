@@ -1,0 +1,34 @@
+---
+description: Guardrails for linescan AcqStore grafts (_e) and Reference drop-in sync
+globs: docs-dev/reference-clients/neuronal_calcium_linescan/**/*.{html,js,css},src/acqstore_server/static/demo/v2/dropin/**/*,docs-dev/maintainer-tools/**
+alwaysApply: false
+---
+
+# Linescan graft / drop-in: never ship a dead page
+
+## Why this is brittle
+
+`linescan_analyzer_v1_18_acqstore_v2_*.html` is **one** `<script>` block (original analyzer + inlined drop-in + load wiring). A **single SyntaxError** anywhere aborts the entire script — so a bug in Reference-card layout code (or a bad sync into `_e`) can make **Load File** and the whole UI appear dead, even if you only meant to edit card headers.
+
+Python `re.sub(pattern, replacement_string, …)` **eats backslashes** in the replacement. Never sync drop-in JS into HTML with a plain string replacement; use a **callable** (`lambda m: js_text`) or write the file without `re.sub` replacement interpolation.
+
+## Required guardrail (do this before saying done)
+
+After **any** edit that changes:
+
+- `src/acqstore_server/static/demo/v2/dropin/acqstore-reference-view.js`
+- packet `docs-dev/reference-clients/neuronal_calcium_linescan/dropin/*`
+- inlined drop-in / wiring inside `linescan_analyzer_v1_18_acqstore_v2_e.html` (or later lettered grafts)
+
+run:
+
+1. `node --check` on the drop-in `.js`
+2. Extract the grafted page’s main `<script>…</script>` to a temp file and `node --check` that too
+
+If either check fails, **fix before** telling the user to hard-refresh or re-Load.
+
+## Prefer small blast radius
+
+- Prefer editing the drop-in, then syncing into `_e` with a verified check
+- Do not assume “layout-only” JS is safe — it shares the same script as Load wiring
+- Avoid regenerating `_e` via graft scripts unless the user asks; `_e` is often hand-edited

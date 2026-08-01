@@ -100,7 +100,8 @@ function drawAxisLabels(ctx, drawState) {
   ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, widthPx - 1), Math.max(0, heightPx - 1));
 
   if (xMeta) {
-    const ticks = adaptiveAxisTicks(xMeta.max, widthPx, {minMajorPx: 64, minMinorPx: 16});
+    // Same spacing policy as Y so square plots get matching tick density.
+    const ticks = adaptiveAxisTicks(xMeta.max, widthPx, {minMajorPx: 48, minMinorPx: 14});
     const xAt = value => left + (value / xMeta.step) * scaleX;
     // Outside stubs only — no vertical grid through the image.
     ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
@@ -139,7 +140,7 @@ function drawAxisLabels(ctx, drawState) {
   }
 
   if (yMeta) {
-    const ticks = adaptiveAxisTicks(yMeta.max, heightPx, {minMajorPx: 28, minMinorPx: 11});
+    const ticks = adaptiveAxisTicks(yMeta.max, heightPx, {minMajorPx: 48, minMinorPx: 14});
     // Plot-style Y after display transpose: 0 at the image bottom, max at the top.
     const yAt = value => bottom - (value / yMeta.step) * scaleY;
     // Outside stubs only — no horizontal grid through the image.

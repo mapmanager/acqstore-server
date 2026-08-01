@@ -239,6 +239,10 @@ async function example() {
       const referencePlane = await fetchPlane(referenceResource, opened.reference.plane);
       const referenceDisplay = transposePlane(referencePlane.values, referencePlane.shape);
       console.log('reference display shape:', referenceDisplay.shape);
+
+      // scanPath: {x:[...], y:[...]}  ·  lineRoi: [x0,y0,x1,y1]
+      // Coordinates are reference-plane pixels (x→dim1, y→dim0) before transpose.
+      // Prefer scanPath when both exist. See the API contract for full examples.
       console.log('scan path:', opened.reference.scanPath);
       console.log('line ROI:', opened.reference.lineRoi);
     }

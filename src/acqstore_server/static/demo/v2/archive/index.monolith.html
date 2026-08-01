@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AcqStore Server API v2 demo</title>
+<title>AcqStore Server API v2 demo · ACQSTORE_MONOLITH_HANDOFF_ID=2026-07-31-v2</title>
+<!--
+  DEMO + MARKER SOURCE for the owned Reference View drop-in.
+  Fingerprint: ACQSTORE_MONOLITH_HANDOFF_ID=2026-07-31-v2
+  Client/LLM integration path (preferred):
+    src/acqstore_server/static/demo/v2/dropin/acqstore-reference-view.{js,css}
+    Regenerate: docs-dev/.../_build_reference_view_dropin.py
+  LLM_COPY markers below remain the extract source for that drop-in.
+  Do NOT ask end-user LLMs to hand-copy these markers into third-party analyzers.
+-->
 <style>
 :root { color-scheme: dark; --bg:#0b1220; --panel:#111827; --line:#334155; --text:#e5e7eb; --muted:#94a3b8; --accent:#38bdf8; --ok:#34d399; --err:#fb7185; }
 * { box-sizing:border-box; }
@@ -24,6 +33,7 @@ button { padding:6px 12px; border:0; border-radius:8px; background:var(--accent)
 button:disabled { opacity:.45; cursor:default; }
 .status { min-height:0; font-size:13px; }
 .status.ok { color:var(--ok); } .status.err { color:var(--err); }
+/* LLM_COPY:REFERENCE_VIEW_CSS_BEGIN — paste into grafted analyzer; keep selectors */
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
 .card { border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:12px; overflow:hidden; }
 .section-heading { display:flex; align-items:center; justify-content:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
@@ -105,6 +115,19 @@ details[open] summary { margin-bottom:10px; }
 .canvas-wrap.region-zooming canvas { cursor:crosshair; }
 pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px; background:#020617; font-size:11px; }
 .meta { color:var(--muted); font-size:12px; margin:0 0 8px; }
+.card-title-row {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin:0 0 10px; min-width:0;
+}
+.card-title-row h2 { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.save-png-btn {
+  flex:0 0 auto; padding:3px 8px; font-size:11px; font-weight:600; line-height:1.2;
+  border-radius:6px; border:0; background:var(--accent); color:#03131d; cursor:pointer;
+}
+.save-png-btn:disabled { opacity:.45; cursor:default; }
+.split-pane .grid > .card > .card-title-row { flex:0 0 auto; margin-bottom:0; }
+/* LLM_COPY:REFERENCE_VIEW_CSS_END */
+
 </style>
 </head>
 <body>
@@ -204,6 +227,8 @@ const referencePane = document.getElementById('referencePane');
 const imageSplitDivider = document.getElementById('imageSplitDivider');
 const state = {
   currentSessionId: null,
+  /** Basename including extension of the opened acquisition (for Save PNG names). */
+  loadedSourceName: null,
   activeViews: [],
   /** Per-group display slots when Composite is on (independent source vs reference). */
   compositeSlots: {source: null, reference: null},
@@ -236,10 +261,30 @@ async function getJson(url, options={}) {
   }
   return payload;
 }
+// LLM_COPY:REFERENCE_VIEW_JS_BEGIN
+// =====================================================================
+// AUTHORITATIVE Reference / channel image viewer — COPY VERBATIM into grafts.
+// Do not invent a simpler viewport, axes, or Save PNG.
+//
+// REQUIRED BEHAVIOR (exact product spec):
+// 1) N reference.channels => N canvas panels when Composite OFF; N contrast rows.
+// 2) Each panel title row = label + Save PNG (createSavePngButton / createCardTitleRow).
+// 3) Orientation: (i) transposePlane then (ii) Y-flip in createImageViewport.draw
+//    (ctx.scale(scaleX, -scaleY)). Both required.
+// 4) Axes ON => drawAxisLabels: numeric tick labels + unit. Use the SAME
+//    minMajorPx / minMinorPx for X and Y so square images get matching tick
+//    density on bottom and left.
+// 5) Interactions: wheel zoom, Shift+drag pan, double-click home, click+drag
+//    zoom box / region zoom (createImageViewport).
+// 6) Contrast: one row [label][LUT select][Range…] + log histogram popover.
+// 7) After first setImage/mount: call resize on next animation frame(s) so the
+//    first reference panel is not offset when the split layout settles.
+// =====================================================================
 // --- session view state ---
 function destroyActiveViews() {
   state.activeViews.forEach(view => view.viewport?.destroy());
   state.activeViews = [];
+  state.loadedSourceName = null;
   for (const group of Object.keys(state.compositeSlots)) {
     state.compositeSlots[group]?.viewport?.destroy();
     state.compositeSlots[group] = null;
@@ -398,7 +443,8 @@ function drawAxisLabels(ctx, state) {
   ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, widthPx - 1), Math.max(0, heightPx - 1));
 
   if (xMeta) {
-    const ticks = adaptiveAxisTicks(xMeta.max, widthPx, {minMajorPx: 64, minMinorPx: 16});
+    // Same spacing policy as Y so square plots get matching tick density.
+    const ticks = adaptiveAxisTicks(xMeta.max, widthPx, {minMajorPx: 48, minMinorPx: 14});
     const xAt = value => left + (value / xMeta.step) * scaleX;
     // Outside stubs only — no vertical grid through the image.
     ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
@@ -437,7 +483,7 @@ function drawAxisLabels(ctx, state) {
   }
 
   if (yMeta) {
-    const ticks = adaptiveAxisTicks(yMeta.max, heightPx, {minMajorPx: 28, minMinorPx: 11});
+    const ticks = adaptiveAxisTicks(yMeta.max, heightPx, {minMajorPx: 48, minMinorPx: 14});
     // Plot-style Y after display transpose: 0 at the image bottom, max at the top.
     const yAt = value => bottom - (value / yMeta.step) * scaleY;
     // Outside stubs only — no horizontal grid through the image.
@@ -487,6 +533,90 @@ function destroyGroupViewports(group) {
   state.compositeSlots[group]?.viewport?.destroy();
   state.compositeSlots[group] = null;
 }
+
+// --- save png (on-screen canvas) ---
+function sourceFileLabel(source) {
+  const raw = source?.name || source?.path || source?.uri || 'acquisition';
+  const s = String(raw);
+  const slash = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+  return (slash >= 0 ? s.slice(slash + 1) : s) || 'acquisition';
+}
+function suggestedPngName(opts) {
+  const stem = state.loadedSourceName || 'acquisition';
+  const isRef = opts.group === 'reference';
+  if (opts.composite) return isRef ? `${stem}_ref.composite.png` : `${stem}.composite.png`;
+  const index = Number.isInteger(opts.channelIndex) ? opts.channelIndex : 0;
+  return isRef ? `${stem}_ref.ch${index}.png` : `${stem}.ch${index}.png`;
+}
+async function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('PNG encode failed'))), 'image/png');
+  });
+}
+async function savePngBlob(blob, suggestedName) {
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName,
+        types: [{description: 'PNG image', accept: {'image/png': ['.png']}}],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = suggestedName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+async function saveDisplayCanvasPng(canvas, opts) {
+  if (!canvas) throw new Error('No canvas to save');
+  opts.viewport?.redraw?.();
+  const suggestedName = suggestedPngName(opts);
+  const blob = await canvasToPngBlob(canvas);
+  await savePngBlob(blob, suggestedName);
+}
+function createSavePngButton({canvas, getViewport, group, channelIndex, composite=false}) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'save-png-btn';
+  button.textContent = 'Save PNG';
+  button.title = 'Save the image as currently shown';
+  button.addEventListener('click', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      button.disabled = true;
+      await saveDisplayCanvasPng(canvas, {
+        group,
+        channelIndex,
+        composite,
+        viewport: getViewport?.(),
+      });
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : String(error));
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return button;
+}
+function createCardTitleRow(titleText, saveButton) {
+  const row = document.createElement('div');
+  row.className = 'card-title-row';
+  const title = document.createElement('h2');
+  title.textContent = titleText;
+  row.append(title, saveButton);
+  return row;
+}
+
 function mountGroupLayout(group) {
   const container = group === 'source' ? channelsEl : referencesEl;
   const views = groupViews(group);
@@ -498,41 +628,51 @@ function mountGroupLayout(group) {
     const [first, second] = compositePair(group);
     const card = document.createElement('article');
     card.className = 'card';
-    const title = document.createElement('h2');
-    title.textContent = group === 'source' ? 'Source composite' : 'Reference composite';
-    const meta = document.createElement('p');
-    meta.className = 'meta';
-    meta.textContent =
-      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
-      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
     const wrap = document.createElement('div');
     wrap.className = 'canvas-wrap';
     const canvas = document.createElement('canvas');
     wrap.appendChild(canvas);
-    card.append(title, meta, wrap);
-    container.appendChild(card);
-    state.compositeSlots[group] = {
+    const slot = {
       canvas,
       viewport: null,
       axes: first.axes,
       scanPath: first.scanPath,
       lineRoi: first.lineRoi,
     };
+    const saveBtn = createSavePngButton({
+      canvas,
+      getViewport: () => slot.viewport,
+      group,
+      composite: true,
+    });
+    const titleText = group === 'source' ? 'Source composite' : 'Reference composite';
+    const meta = document.createElement('p');
+    meta.className = 'meta';
+    meta.textContent =
+      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
+      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
+    card.append(createCardTitleRow(titleText, saveBtn), meta, wrap);
+    container.appendChild(card);
+    state.compositeSlots[group] = slot;
     return;
   }
 
   for (const view of views) {
     const card = document.createElement('article');
     card.className = 'card';
-    const title = document.createElement('h2');
-    title.textContent = view.label;
     const wrap = document.createElement('div');
     wrap.className = 'canvas-wrap';
     const canvas = document.createElement('canvas');
     wrap.appendChild(canvas);
-    card.append(title, wrap);
-    container.appendChild(card);
     view.canvas = canvas;
+    const saveBtn = createSavePngButton({
+      canvas,
+      getViewport: () => view.viewport,
+      group: view.group,
+      channelIndex: view.channelIndex,
+    });
+    card.append(createCardTitleRow(view.label, saveBtn), wrap);
+    container.appendChild(card);
   }
 }
 function redrawGroupDisplay(group, opts={}) {
@@ -760,10 +900,6 @@ function drawScanPathOverlay(ctx, scanPath, lineRoi, viewScale) {
 
 // --- viewport ---
 // Interactive zoom/pan viewport for channel canvas elements.
-import {clamp} from './util.js';
-
-// Interactive zoom/pan viewport for channel canvas elements.
-import {clamp} from './util.js';
 
 /** Reserved screen gutters so axis labels sit outside the pixel rectangle. */
 const PLOT_MARGIN = {left: 48, right: 10, top: 6, bottom: 22};
@@ -1521,6 +1657,7 @@ function createContrastController(elements, redrawView) {
     },
   };
 }
+// LLM_COPY:REFERENCE_VIEW_JS_END
 // --- app orchestration ---
 async function renderResources(resources, plane, group, reference=null) {
   // Data only — DOM cards are mounted by mountGroupLayout (solo or composite).
@@ -1551,6 +1688,7 @@ async function renderOpen(payload) {
   headerPre.textContent = JSON.stringify(payload.header, null, 2);
   responsePre.textContent = JSON.stringify(payload, null, 2);
   destroyActiveViews();
+  state.loadedSourceName = sourceFileLabel(payload.source);
   sourceComposite.checked = false;
   referenceComposite.checked = false;
   sourceAxes.checked = false;
@@ -1585,6 +1723,11 @@ async function renderOpen(payload) {
   mountGroupLayout('reference');
   redrawGroupDisplay('source', {resetView:true});
   redrawGroupDisplay('reference', {resetView:true});
+  // Layout may settle after split-pane enable; re-fit so first ref panel is not offset.
+  requestAnimationFrame(() => {
+    resizeAllViewports();
+    requestAnimationFrame(() => resizeAllViewports());
+  });
 }
 function redrawAxesOnly(group) {
   if (compositeEnabled(group) && state.compositeSlots[group]?.viewport) {

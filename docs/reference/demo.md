@@ -19,7 +19,7 @@ The demo intentionally exercises the open → display → replace-session baseli
 5. decode raw little-endian float32 data
 6. validate `byteLength` and `plane.shape`
 7. transpose immediately before canvas display
-8. optional reference `scanPath` / `lineRoi` overlay (display-only)
+8. optional reference `scanPath` / `lineRoi` overlay (display-only; `scanPath` is `{x,y}` arrays, `lineRoi` is `[x0,y0,x1,y1]` in reference pixel space — see [API contract](api.md#lineroi-and-scanpath-examples))
 9. display-only contrast (LUT + intensity range) on stored float planes
 10. interactive per-image navigation (wheel/pinch zoom; square images: drag a square region to zoom; non-square: H/V axis-zoom drag; Shift+pan; double-click home; unequal planes stretch-fill the wrap)
 11. optional per-group **Composite** (source and reference independently): each channel’s LUT + range, additive RGB clamp

@@ -187,6 +187,8 @@ A client may instead display the original `[rows, columns]` plane directly. The 
 
 Render either representation with Canvas, Plotly, or another graphics library.
 
+When `opened.reference` is present, also read optional `reference.scanPath` and `reference.lineRoi`. See the [API contract](../reference/api.md#lineroi-and-scanpath-examples) for JSON examples and a small helper that turns those fields into drawable points. Coordinates are reference-plane pixels (`x` → dim1, `y` → dim0); if you transpose the image for display, swap overlay coordinates the same way.
+
 ## 7. Delete the session
 
 Delete the server session when the client is finished:

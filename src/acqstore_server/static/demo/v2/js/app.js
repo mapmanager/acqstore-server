@@ -46,6 +46,7 @@ import {
   resizeAllViewports,
   onCompositeChange,
 } from './layout.js';
+import {sourceFileLabel} from './save-png.js';
 
 function setBusy(busy) {
   pickBtn.disabled = busy;
@@ -83,6 +84,7 @@ async function renderOpen(payload) {
   headerPre.textContent = JSON.stringify(payload.header, null, 2);
   responsePre.textContent = JSON.stringify(payload, null, 2);
   destroyActiveViews();
+  state.loadedSourceName = sourceFileLabel(payload.source);
   sourceComposite.checked = false;
   referenceComposite.checked = false;
   sourceAxes.checked = false;
@@ -117,6 +119,11 @@ async function renderOpen(payload) {
   mountGroupLayout('reference');
   redrawGroupDisplay('source', {resetView:true});
   redrawGroupDisplay('reference', {resetView:true});
+  // Layout may settle after split-pane enable; re-fit so first ref panel is not offset.
+  requestAnimationFrame(() => {
+    resizeAllViewports();
+    requestAnimationFrame(() => resizeAllViewports());
+  });
 }
 const splitPane = createSplitPane({
   container: imageSplit,

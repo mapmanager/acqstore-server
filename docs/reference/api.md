@@ -198,7 +198,7 @@ The payload is row-major and has not been transposed by the server.
 
 ## Reference image
 
-When present, `reference` contains its own `plane`, `channels`, optional `lineRoi`, and optional `scanPath`.
+When present, `reference` contains its own `plane`, `channels`, optional `lineRoi`, and optional `scanPath`. Either geometry field may be `null` or omitted when the acquisition has no reference line metadata.
 
 Reference binary URL:
 
@@ -207,6 +207,83 @@ GET /api/v2/sessions/{sessionId}/reference/channels/{channelIndex}/data
 ```
 
 Decode and validate it using `reference.plane` and the selected reference channel's `byteLength`.
+
+### `lineRoi` and `scanPath` examples
+
+Coordinates are in the **reference plane's AcqStore pixel space** before any client display transpose:
+
+- `x` aligns with array dimension 1 (columns)
+- `y` aligns with array dimension 0 (rows)
+
+**`lineRoi`** is a four-number segment `[x0, y0, x1, y1]` (start → end):
+
+```json
+"lineRoi": [12.0, 40.0, 210.5, 40.0]
+```
+
+**`scanPath`** is a polyline as parallel `x` / `y` arrays of equal length:
+
+```json
+"scanPath": {
+  "x": [12.0, 80.0, 210.5],
+  "y": [40.0, 42.5, 40.0]
+}
+```
+
+Illustrative `reference` object (numbers are examples only):
+
+```json
+"reference": {
+  "plane": {
+    "shape": [512, 512],
+    "axes": [
+      {"arrayDimension": 0, "name": "Y", "size": 512, "step": 0.2, "unit": "micrometer"},
+      {"arrayDimension": 1, "name": "X", "size": 512, "step": 0.2, "unit": "micrometer"}
+    ],
+    "servedDtype": "float32",
+    "encoding": "raw-f32-le",
+    "layout": "row-major",
+    "mediaType": "application/octet-stream"
+  },
+  "channels": [
+    {
+      "index": 0,
+      "byteLength": 1048576,
+      "dataUrl": "/api/v2/sessions/example-session-id/reference/channels/0/data"
+    }
+  ],
+  "lineRoi": [12.0, 40.0, 210.5, 40.0],
+  "scanPath": {
+    "x": [12.0, 80.0, 210.5],
+    "y": [40.0, 42.5, 40.0]
+  }
+}
+```
+
+Prefer `scanPath` when both are present. A simple point list for drawing:
+
+```javascript
+function referencePathPoints(scanPath, lineRoi) {
+  if (
+    scanPath &&
+    Array.isArray(scanPath.x) &&
+    Array.isArray(scanPath.y) &&
+    scanPath.x.length > 0 &&
+    scanPath.x.length === scanPath.y.length
+  ) {
+    return scanPath.x.map((x, index) => [x, scanPath.y[index]]);
+  }
+  if (Array.isArray(lineRoi) && lineRoi.length === 4) {
+    return [
+      [lineRoi[0], lineRoi[1]],
+      [lineRoi[2], lineRoi[3]],
+    ];
+  }
+  return [];
+}
+```
+
+If the client **transposes** the reference plane for display (swap rows/columns), apply the same swap to overlay points: plot `(y, x)` in the transposed image so the path stays aligned with the pixels.
 
 ## Session lifecycle
 

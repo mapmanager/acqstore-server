@@ -18,10 +18,12 @@ import {drawScanPathOverlay} from './scan-path.js';
 import {drawAxisLabels} from './axes.js';
 import {renderPlaneBitmap, renderCompositeBitmap} from './render.js';
 import {lutDisplayLabel} from './lut.js';
+import {createSavePngButton, createCardTitleRow} from './save-png.js';
 
 function destroyActiveViews() {
   state.activeViews.forEach(view => view.viewport?.destroy());
   state.activeViews = [];
+  state.loadedSourceName = null;
   for (const group of Object.keys(state.compositeSlots)) {
     state.compositeSlots[group]?.viewport?.destroy();
     state.compositeSlots[group] = null;
@@ -87,41 +89,51 @@ function mountGroupLayout(group) {
     const [first, second] = compositePair(group);
     const card = document.createElement('article');
     card.className = 'card';
-    const title = document.createElement('h2');
-    title.textContent = group === 'source' ? 'Source composite' : 'Reference composite';
-    const meta = document.createElement('p');
-    meta.className = 'meta';
-    meta.textContent =
-      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
-      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
     const wrap = document.createElement('div');
     wrap.className = 'canvas-wrap';
     const canvas = document.createElement('canvas');
     wrap.appendChild(canvas);
-    card.append(title, meta, wrap);
-    container.appendChild(card);
-    state.compositeSlots[group] = {
+    const slot = {
       canvas,
       viewport: null,
       axes: first.axes,
       scanPath: first.scanPath,
       lineRoi: first.lineRoi,
     };
+    const saveBtn = createSavePngButton({
+      canvas,
+      getViewport: () => slot.viewport,
+      group,
+      composite: true,
+    });
+    const titleText = group === 'source' ? 'Source composite' : 'Reference composite';
+    const meta = document.createElement('p');
+    meta.className = 'meta';
+    meta.textContent =
+      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
+      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
+    card.append(createCardTitleRow(titleText, saveBtn), meta, wrap);
+    container.appendChild(card);
+    state.compositeSlots[group] = slot;
     return;
   }
 
   for (const view of views) {
     const card = document.createElement('article');
     card.className = 'card';
-    const title = document.createElement('h2');
-    title.textContent = view.label;
     const wrap = document.createElement('div');
     wrap.className = 'canvas-wrap';
     const canvas = document.createElement('canvas');
     wrap.appendChild(canvas);
-    card.append(title, wrap);
-    container.appendChild(card);
     view.canvas = canvas;
+    const saveBtn = createSavePngButton({
+      canvas,
+      getViewport: () => view.viewport,
+      group: view.group,
+      channelIndex: view.channelIndex,
+    });
+    card.append(createCardTitleRow(view.label, saveBtn), wrap);
+    container.appendChild(card);
   }
 }
 function redrawGroupDisplay(group, opts={}) {

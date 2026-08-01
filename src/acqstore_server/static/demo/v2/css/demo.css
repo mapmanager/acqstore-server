@@ -98,3 +98,14 @@ details[open] summary { margin-bottom:10px; }
 .canvas-wrap.region-zooming canvas { cursor:crosshair; }
 pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px; background:#020617; font-size:11px; }
 .meta { color:var(--muted); font-size:12px; margin:0 0 8px; }
+.card-title-row {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin:0 0 10px; min-width:0;
+}
+.card-title-row h2 { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.save-png-btn {
+  flex:0 0 auto; padding:3px 8px; font-size:11px; font-weight:600; line-height:1.2;
+  border-radius:6px; border:0; background:var(--accent); color:#03131d; cursor:pointer;
+}
+.save-png-btn:disabled { opacity:.45; cursor:default; }
+.split-pane .grid > .card > .card-title-row { flex:0 0 auto; margin-bottom:0; }
