@@ -79,18 +79,26 @@ source = { editable = "." }
 dependencies = [
     { name = "acqstore" },
     { name = "fastapi" },
-    { name = "nicegui" },
     { name = "numpy" },
     { name = "platformdirs" },
     { name = "pydantic" },
-    { name = "pywebview" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+desktop = [
+    { name = "nicegui" },
+    { name = "pywebview" },
 ]
 
 [package.dev-dependencies]
 build = [
     { name = "pillow" },
     { name = "pyinstaller" },
+]
+desktop = [
+    { name = "nicegui" },
+    { name = "pywebview" },
 ]
 dev = [
     { name = "httpx" },
@@ -109,18 +117,23 @@ docs = [
 requires-dist = [
     { name = "acqstore", editable = "../acqstore" },
     { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "nicegui", specifier = ">=3.14.0" },
+    { name = "nicegui", marker = "extra == 'desktop'", specifier = ">=3.14.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "platformdirs", specifier = ">=4.0.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "pywebview", specifier = ">=6.2.1" },
+    { name = "pywebview", marker = "extra == 'desktop'", specifier = ">=6.2.1" },
     { name = "uvicorn", specifier = ">=0.30.0" },
 ]
+provides-extras = ["desktop"]
 
 [package.metadata.requires-dev]
 build = [
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyinstaller", specifier = ">=6.21.0" },
+]
+desktop = [
+    { name = "nicegui", specifier = ">=3.14.0" },
+    { name = "pywebview", specifier = ">=6.2.1" },
 ]
 dev = [
     { name = "httpx", specifier = ">=0.27.0" },

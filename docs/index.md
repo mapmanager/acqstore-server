@@ -9,13 +9,15 @@ This site covers:
 - Using the packaged desktop app and its main window
 - The built-in demo
 - Building your own HTML/JavaScript client against API v2
+- Controlling the server from another Python desktop app
 
 ## Start here
 
 - [Get the desktop app](users/install.md) — request and run the packaged app
 - [Main window](users/gui.md) — control the server and open the demo
 - [Built-in demo](users/demo.md) — open a file and view images
-- [Build a client](llm/index.md) — hub for the first JavaScript / LLM path
+- [Build a client](llm/index.md) — JavaScript clients and Python server control
+- [Control the server](llm/control-the-server.md) — start / stop / monitor from Python
 - [LLM prompt](llm/prompt.md) — copy-paste prompt for an agent
 
-Optional detail lives under [Reference (details)](reference/index.md). Python module docs are under [API](api/index.md).
+Optional detail lives under [Reference (details)](reference/index.md).

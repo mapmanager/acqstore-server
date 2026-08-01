@@ -11,6 +11,7 @@ Start with the first-client page and the live OpenAPI schema. Use these pages wh
 | [Demo](demo.md) | What `/demo/v2/` exercises |
 | [Errors](errors.md) | Stable JSON error envelope and codes |
 | [Client handoff](client-handoff.md) | Short acceptance checklist |
+| [Control the server](../llm/control-the-server.md) | Python start / stop / monitor for embedders |
 
 Live machine contract while the app is running:
 

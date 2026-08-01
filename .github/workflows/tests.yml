@@ -58,7 +58,7 @@ jobs:
         run: uv lock --check
 
       - name: Install dependencies
-        run: uv sync --frozen --group dev
+        run: uv sync --frozen --group dev --group desktop
 
       - name: Ruff
         run: uv run --no-sync ruff check .
@@ -93,9 +93,10 @@ jobs:
           print("acqstore_server:", acqstore_server.__file__)
 
           root = resources.files("acqstore_server")
-          demo_v1 = root.joinpath("static/demo/index.html")
           demo_v2 = root.joinpath("static/demo/v2/index.html")
-          assert demo_v1.is_file(), demo_v1
           assert demo_v2.is_file(), demo_v2
-          print("static demos OK:", demo_v1, demo_v2)
+          from acqstore_server import ServerController
+
+          print("static demo OK:", demo_v2)
+          print("ServerController:", ServerController)
           PY

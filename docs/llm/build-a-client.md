@@ -8,9 +8,7 @@ The API is deliberately small. A first client needs only health, capabilities, o
 
 ## 1. Start the server
 
-Run the packaged desktop app you requested and received. While it is running, the local API is available on loopback.
-
-The default addresses are:
+Run the packaged desktop app, or start the server from another Python app (see [Control the server](control-the-server.md)). While it is running, clients use:
 
 ```javascript
 const SERVER = 'http://127.0.0.1:8767';

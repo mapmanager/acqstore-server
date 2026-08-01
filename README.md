@@ -27,8 +27,16 @@ Local layout:
 ## Install (development)
 
 ```bash
-uv sync --group dev
+uv sync
 uv run --no-sync python -c "import acqstore, acqstore_server; print(acqstore.__file__); print(acqstore_server.__file__)"
+```
+
+`uv sync` installs the core package plus the local `dev` and `desktop` groups (NiceGUI for the status window). Embedders such as CloudScope should depend on the core package only (no `[desktop]` extra).
+
+Optional extras for consumers:
+
+```bash
+pip install 'acqstore-server[desktop]'   # NiceGUI status window / packaged .app
 ```
 
 ## Run (API only)

@@ -44,7 +44,7 @@ fi
 echo "[build] Syncing locked packaging environment (runtime + build group)..."
 (
   cd "$REPO_ROOT"
-  UV_PROJECT_ENVIRONMENT="$BUILD_VENV_DIR" uv sync --locked --no-dev --group build
+  UV_PROJECT_ENVIRONMENT="$BUILD_VENV_DIR" uv sync --locked --no-dev --group build --group desktop
 )
 
 # shellcheck source=/dev/null

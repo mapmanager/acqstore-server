@@ -317,11 +317,20 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
 def main_native() -> None:
     """Run NiceGUI status UI as a client of :class:`ServerController`.
 
-    The API listens on the API bind (default ``127.0.0.1:8767``). The status
+    Requires the ``desktop`` extra (``acqstore-server[desktop]``). The HTTP
+    server listens on the API bind (default ``127.0.0.1:8767``). The status
     window listens on the UI bind (default ``127.0.0.1:8766``).
     """
-    from nicegui import app as nicegui_app
-    from nicegui import ui
+    try:
+        from nicegui import app as nicegui_app
+        from nicegui import ui
+    except ImportError as exc:
+        raise SystemExit(
+            'NiceGUI is required for the desktop status window.\n'
+            '  Install with: pip install \'acqstore-server[desktop]\'\n'
+            '  Or in this repo: uv sync  (includes the desktop group)\n'
+            '  For API-only: uv run python -m acqstore_server'
+        ) from exc
 
     from acqstore_server.runtime import (
         PortInUseError,

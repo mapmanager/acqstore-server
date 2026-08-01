@@ -1,7 +1,22 @@
 """Programmatic start/stop/status for the AcqStore Server HTTP API (v2).
 
-Embedders (for example a future CloudScope left-toolbar panel) should use
-:class:`ServerController` instead of ``python -m acqstore_server.desktop``.
+Embedders (CloudScope App, tests, CLI) should use :class:`ServerController` to
+run the server in a background thread. That is separate from HTTP API v2 clients
+(browser / JavaScript), which talk to a server that is already running.
+
+Minimal control loop::
+
+    from acqstore_server import ServerController
+
+    controller = ServerController()
+    status = controller.start()  # http://127.0.0.1:8767 by default
+    assert status.healthy
+    # ... JS clients or other tools use the HTTP API ...
+    controller.stop()
+
+Do not import :mod:`acqstore_server.status_ui` or NiceGUI from an embedder unless
+you intentionally want this package's desktop window (requires
+``acqstore-server[desktop]``).
 """
 
 from __future__ import annotations
@@ -60,10 +75,14 @@ class ServerStatus:
 
 
 class ServerController:
-    """Start, stop, and probe an API-only uvicorn server in a background thread.
+    """Start, stop, and probe the HTTP server in a background thread.
 
-    Used by the API-only CLI, the NiceGUI status window (``main_native``), tests,
-    and future embedders such as CloudScope App.
+    This is the Python control API for desktop embedders. It does not open
+    acquisitions or serve planes by itself — HTTP clients use ``/api/v2`` once
+    the server is running.
+
+    Typical methods: :meth:`start`, :meth:`status`, :meth:`stop`,
+    :meth:`list_port_listeners`, :meth:`reclaim_port`.
     """
 
     def __init__(self) -> None:

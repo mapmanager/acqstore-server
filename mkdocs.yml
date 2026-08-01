@@ -66,6 +66,7 @@ nav:
   - Build a client:
       - llm/index.md
       - Build a first client: llm/build-a-client.md
+      - Control the server: llm/control-the-server.md
       - LLM prompt: llm/prompt.md
   - Reference (details):
       - reference/index.md
@@ -74,8 +75,3 @@ nav:
       - Demo: reference/demo.md
       - Errors: reference/errors.md
       - Client handoff: reference/client-handoff.md
-  - API:
-      - api/index.md
-      - Schemas: api/schemas.md
-      - Routes: api/routes.md
-      - Open service: api/open-service.md

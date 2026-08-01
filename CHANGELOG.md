@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Docs: [Control the server (Python)](docs/llm/control-the-server.md) for embedders (`ServerController`).
+- Public package exports: `ServerController`, `ServerStatus`, and related errors from `acqstore_server`.
+
+### Changed
+
+- NiceGUI / pywebview moved to optional extra `acqstore-server[desktop]` (and local uv group `desktop`). Core install is enough to start/stop the HTTP server from Python.
+- MkDocs: removed top-level autodoc “API” nav (schemas / routes / open service); client docs split into JS vs Python control.
+
 ## [0.2.0] — 2026-08-01
 
 ### Breaking
@@ -25,5 +37,3 @@
 
 - Main-window **Quit** and **Start server (force)** buttons (use the window close / app Quit menu; free the port then Start when needed).
 - API v1 modules, routes, and demo.
-
-## [Unreleased]

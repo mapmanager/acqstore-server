@@ -1,19 +1,18 @@
 # Build a client
 
-These pages are for people (and LLMs) writing a thin HTML/JavaScript page against a **running** AcqStore Server. The public site root is:
+These pages are for people (and LLMs) integrating with AcqStore Server.
 
-```text
-https://mapmanager.github.io/acqstore-server/
-```
+1. [Build a first client](build-a-client.md) — HTML / JavaScript against HTTP API v2 on a running server
+2. [Control the server (Python)](control-the-server.md) — start / stop / monitor from another desktop app
+3. [LLM prompt](prompt.md) — paste into Cursor, ChatGPT, or another LLM (for JavaScript clients)
 
-1. [Build a first client](build-a-client.md) — step-by-step API v2 path
-2. [LLM prompt](prompt.md) — paste into Cursor, ChatGPT, or another LLM (public docs URLs; OpenAPI on loopback when the agent can reach it)
-
-While the app is running, use live Swagger and OpenAPI on the **server** (not the docs site):
+While the server is running, live Swagger and OpenAPI are available at:
 
 ```text
 http://127.0.0.1:8767/docs
 http://127.0.0.1:8767/openapi.json
 ```
 
-Optional extras are under [Reference (details)](../reference/index.md). Match the **behavior** of the built-in demo at `http://127.0.0.1:8767/demo/v2/` (primary images, reference images when present, and the reference line-scan path when available). Application source code is not required.
+Match the behavior of the built-in demo at `http://127.0.0.1:8767/demo/v2/` when building a JavaScript client (primary images, reference images when present, and the reference line-scan path when available). Application source code is not required.
+
+Optional detail lives under [Reference (details)](../reference/index.md).
