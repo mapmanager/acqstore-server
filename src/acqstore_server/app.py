@@ -345,8 +345,12 @@ def main_native() -> None:
         print(
             f'[acqstore_server] AcqStore Server already looks running '
             f'(API {api_host}:{api_port}, UI {ui_host}:{ui_port}).\n'
-            f'  Use the existing status window.\n'
-            f'  Or Quit that window, then launch desktop again.',
+            f'  Use the existing status window, or Quit it first.\n'
+            f'  If no window is visible (stale process), free both ports:\n'
+            f'    lsof -nP -iTCP:{ui_port} -sTCP:LISTEN\n'
+            f'    lsof -nP -iTCP:{api_port} -sTCP:LISTEN\n'
+            f'    kill $(lsof -nP -iTCP:{ui_port} -sTCP:LISTEN -t) '
+            f'$(lsof -nP -iTCP:{api_port} -sTCP:LISTEN -t)',
             file=sys.stderr,
         )
         raise SystemExit(0)
@@ -387,6 +391,10 @@ def main_native() -> None:
     @nicegui_app.on_shutdown
     def _stop_api_on_shutdown() -> None:
         controller.stop()
+        # Closing the native window (red X) must release ports for the next launch.
+        from acqstore_server.status_ui import _force_process_exit
+
+        _force_process_exit()
 
     @ui.page('/')
     def _status_page() -> None:

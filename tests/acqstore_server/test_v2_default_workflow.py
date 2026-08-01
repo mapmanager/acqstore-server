@@ -44,10 +44,16 @@ def test_native_status_ui_source_targets_v2_via_controller() -> None:
     """Status UI drives ServerController and opens v2 resources on the API base."""
     source = Path(status_ui_module.__file__).read_text(encoding='utf-8')
     assert 'ServerController' in source
-    assert 'Start API' in source
-    assert 'Stop API' in source
+    assert 'Open demo' in source
+    assert 'Clients' in source
+    assert 'Server' in source
+    assert 'Log' in source
+    assert 'This process log' not in source
     assert 'Free API port' in source
-    assert 'Start API (reclaim)' in source
+    assert 'Start API (force)' in source
+    assert '_force_process_exit' in source
+    assert 'set_enabled' in source
+    assert '.tooltip(' in source
     assert "/demo/v2/'" in source or '/demo/v2/' in source
     assert 'health_url' in source
     assert "PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'" in source
@@ -99,6 +105,14 @@ def test_main_native_starts_controller_and_ui_ports(monkeypatch, capsys) -> None
     monkeypatch.setattr(
         'acqstore_server.runtime.ServerController',
         FakeController,
+    )
+    monkeypatch.setattr(
+        'acqstore_server.runtime.looks_like_running_desktop',
+        lambda **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        'acqstore_server.runtime.bind_available',
+        lambda _host, _port: True,
     )
     monkeypatch.setitem(
         __import__('sys').modules,

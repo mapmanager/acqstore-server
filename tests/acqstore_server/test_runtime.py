@@ -79,6 +79,21 @@ def test_stop_when_not_running_is_safe() -> None:
     assert status.running is False
 
 
+def test_free_api_port_then_start_again() -> None:
+    """End-user flow: Free API port (stop+reclaim) then Start API must work."""
+    port = _free_port()
+    controller = ServerController()
+    controller.start(host='127.0.0.1', port=port)
+    killed = controller.reclaim_port(port=port)
+    assert killed == []
+    assert controller.is_running is False
+    status = controller.start(host='127.0.0.1', port=port)
+    try:
+        assert status.healthy is True
+    finally:
+        controller.stop()
+
+
 def test_demo_redirect_from_legacy_path() -> None:
     port = _free_port()
     controller = ServerController()

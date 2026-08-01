@@ -1,4 +1,11 @@
-"""NiceGUI status window — thin client of :class:`ServerController`."""
+"""NiceGUI status window — thin client of :class:`ServerController`.
+
+Layout is end-user oriented. Technical notes for maintainers belong in
+docstrings, code comments, and MkDocs — not in the live UI chrome.
+
+The scrolling log panel shows the in-memory ``get_ui_log_text()`` buffer for
+this desktop process (see ``logging_setup``); it is not a live file tail.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +14,8 @@ import json
 import os
 import platform
 import subprocess
+import threading
+import time
 import urllib.request
 import webbrowser
 from pathlib import Path
@@ -17,6 +26,7 @@ from nicegui import ui
 from acqstore_server.constants import APP_NAME, APP_VERSION
 from acqstore_server.gui_defaults import setUpGuiDefaults
 from acqstore_server.logging_setup import get_logger, get_ui_log_text, log_file_path
+from acqstore_server.ports import PortReclaimError
 from acqstore_server.runtime import (
     AlreadyRunningError,
     PortInUseError,
@@ -24,7 +34,6 @@ from acqstore_server.runtime import (
     ServerError,
     ServerStatus,
 )
-from acqstore_server.ports import PortReclaimError
 
 logger = get_logger('status_ui')
 
@@ -33,7 +42,7 @@ PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'
 
 
 def format_status_line(status: ServerStatus, *, ui_bind: str) -> str:
-    """Return a one-line status summary for the status page header/footer."""
+    """Return a one-line status summary for the footer."""
     if status.running and status.healthy:
         api_state = f'API running (healthy) {status.base_url}'
     elif status.running:
@@ -46,11 +55,7 @@ def format_status_line(status: ServerStatus, *, ui_bind: str) -> str:
 
 
 def _open_path_with_default_app(path: Path) -> None:
-    """Open ``path`` with the OS default application.
-
-    Args:
-        path: Existing file or directory path.
-    """
+    """Open ``path`` with the OS default application."""
     resolved = path.expanduser().resolve()
     if not resolved.exists():
         raise FileNotFoundError(str(resolved))
@@ -63,6 +68,21 @@ def _open_path_with_default_app(path: Path) -> None:
         subprocess.run(['xdg-open', str(resolved)], check=False)
 
 
+def _force_process_exit(*, delay_s: float = 0.35) -> None:
+    """Ensure the desktop process exits after NiceGUI shutdown.
+
+    Native ``ui.run`` / pywebview can leave the interpreter alive with ports
+    still bound; the next launch then thinks the app is still running.
+    """
+
+    def _exit() -> None:
+        time.sleep(delay_s)
+        logger.info('Forcing process exit after status UI shutdown')
+        os._exit(0)
+
+    threading.Thread(target=_exit, name='acqstore-server-exit', daemon=True).start()
+
+
 def build_status_page(
     *,
     controller: ServerController,
@@ -71,15 +91,7 @@ def build_status_page(
     ui_host: str,
     ui_port: int,
 ) -> None:
-    """Build the native status page as a client of ``controller``.
-
-    Args:
-        controller: Manages the API-only uvicorn server.
-        api_host: Intended API bind host (used when starting).
-        api_port: Intended API bind port (used when starting).
-        ui_host: NiceGUI bind host (display only).
-        ui_port: NiceGUI bind port (display only).
-    """
+    """Build the native status page as a client of ``controller``."""
     setUpGuiDefaults('text-xs')
 
     log_path = log_file_path()
@@ -93,20 +105,11 @@ def build_status_page(
             ui.label('|').classes('text-grey-6')
             ui.label(f'v{APP_VERSION}').classes('text-body2 text-grey-5')
             ui.label('|').classes('text-grey-6')
-            ui.button(
+            docs_btn = ui.button(
                 'Documentation',
                 on_click=lambda: webbrowser.open(PUBLIC_DOCS_URL),
             ).props('flat dense color=primary')
-
-        status_label = (
-            ui.label(format_status_line(controller.status(), ui_bind=ui_bind))
-            .classes('text-body2 text-grey-4 w-full')
-        )
-
-        def _refresh_status() -> None:
-            text = format_status_line(controller.status(), ui_bind=ui_bind)
-            if status_label.text != text:
-                status_label.set_text(text)
+            docs_btn.tooltip('Open the AcqStore Server user docs in your browser')
 
         def _start_api(*, reclaim: bool = False) -> None:
             try:
@@ -116,136 +119,186 @@ def build_status_page(
                     reclaim=reclaim,
                 )
             except AlreadyRunningError:
-                ui.notify('API server is already running.', type='warning')
-                _refresh_status()
+                ui.notify('The API is already running.', type='warning')
+                _sync_controls()
                 return
             except PortInUseError as exc:
                 logger.warning('Start API port busy: %s', exc)
                 ui.notify(
-                    f'Port busy: {exc}. Use Free API port or Start (reclaim).',
+                    'That port is busy. Try Free port, then Start again.',
                     type='warning',
                 )
-                _refresh_status()
+                _sync_controls()
                 return
             except (ServerError, PortReclaimError) as exc:
                 logger.warning('Start API failed: %s', exc)
-                ui.notify(f'Start failed: {exc}', type='negative')
-                _refresh_status()
+                ui.notify(f'Could not start the API: {exc}', type='negative')
+                _sync_controls()
                 return
             logger.info('API started via status UI at %s', status.base_url)
-            ui.notify(f'API started at {status.base_url}', type='positive')
-            _refresh_status()
+            ui.notify('API started.', type='positive')
+            _sync_controls()
 
         def _stop_api() -> None:
             status = controller.stop()
             logger.info('API stopped via status UI (%s:%s)', status.host, status.port)
             ui.notify('API stopped.', type='info')
-            _refresh_status()
+            _sync_controls()
 
         def _list_api_listeners() -> None:
             try:
                 pids = controller.list_port_listeners(port=api_port)
             except PortReclaimError as exc:
-                ui.notify(f'List failed: {exc}', type='negative')
+                ui.notify(f'Could not list port users: {exc}', type='negative')
                 return
             if not pids:
                 logger.info('No LISTEN pids on API port %s', api_port)
-                ui.notify(f'No listeners on API port {api_port}.', type='info')
+                ui.notify('Nothing else is using the API port.', type='info')
             else:
                 logger.info('LISTEN pids on API port %s: %s', api_port, pids)
-                ui.notify(f'API port {api_port} pids: {pids}', type='warning')
+                ui.notify(f'API port in use by process id(s): {pids}', type='warning')
 
         def _free_api_port() -> None:
             try:
                 killed = controller.reclaim_port(port=api_port)
             except PortReclaimError as exc:
                 logger.warning('Free API port failed: %s', exc)
-                ui.notify(f'Free API port failed: {exc}', type='negative')
-                _refresh_status()
+                ui.notify(f'Could not free the API port: {exc}', type='negative')
+                _sync_controls()
                 return
             if killed:
                 logger.info('Freed API port %s; signaled pids=%s', api_port, killed)
-                ui.notify(f'Freed port {api_port}; killed pids {killed}', type='positive')
+                ui.notify('API port freed.', type='positive')
             else:
-                ui.notify(f'Port {api_port} already free.', type='info')
-            _refresh_status()
+                ui.notify('API port was already free.', type='info')
+            _sync_controls()
 
+        def _open_demo() -> None:
+            status = controller.status(probe_health=False)
+            if not status.running:
+                ui.notify('Start the API first.', type='warning')
+                return
+            webbrowser.open(f'{status.base_url}/demo/v2/')
+
+        def _open_docs() -> None:
+            status = controller.status(probe_health=False)
+            if not status.running:
+                ui.notify('Start the API first.', type='warning')
+                return
+            webbrowser.open(f'{status.base_url}/docs')
+
+        async def _show_health() -> None:
+            status = controller.status(probe_health=False)
+            if not status.running:
+                ui.notify('Start the API first.', type='warning')
+                return
+            url = status.health_url
+            try:
+                def _fetch() -> str:
+                    with urllib.request.urlopen(url, timeout=5) as resp:
+                        return resp.read().decode('utf-8')
+
+                raw = await asyncio.to_thread(_fetch)
+                try:
+                    text = json.dumps(json.loads(raw), indent=2)
+                except json.JSONDecodeError:
+                    text = raw
+                logger.info('Health %s\n%s', url, text)
+                ui.notify('API is healthy.', type='positive')
+            except Exception as exc:  # noqa: BLE001
+                logger.warning('Health request failed: %s — %s', url, exc)
+                ui.notify(f'Health check failed: {exc}', type='negative')
+            _sync_controls()
+
+        def _open_log() -> None:
+            try:
+                _open_path_with_default_app(log_path)
+            except FileNotFoundError:
+                ui.notify('Log file is not available yet.', type='warning')
+            except OSError as exc:
+                ui.notify(f'Unable to open log file: {exc}', type='negative')
+                logger.warning('Failed to open log %s: %s', log_path, exc)
+
+        def _quit() -> None:
+            logger.info('Quit requested from status UI')
+            controller.stop()
+            _force_process_exit()
+            nicegui_app.shutdown()
+
+        # --- Clients (primary) ---
+        ui.label('Clients').classes('text-subtitle2 text-grey-5')
         with ui.row().classes('gap-2 flex-wrap'):
-            ui.button('Start API', on_click=lambda: _start_api(reclaim=False)).props(
+            open_demo_btn = ui.button('Open demo', on_click=_open_demo).props(
                 'color=primary'
             )
-            ui.button(
-                'Start API (reclaim)',
-                on_click=lambda: _start_api(reclaim=True),
+            open_demo_btn.tooltip('Open the browser demo for this API')
+
+            api_docs_btn = ui.button('API docs', on_click=_open_docs).props('outline')
+            api_docs_btn.tooltip('Open interactive API documentation')
+
+            health_btn = ui.button('Check health', on_click=_show_health).props(
+                'outline'
+            )
+            health_btn.tooltip('Ask the API if it is responding')
+
+        # --- Server (ops) ---
+        ui.label('Server').classes('text-subtitle2 text-grey-5')
+        with ui.row().classes('gap-2 flex-wrap'):
+            start_btn = ui.button(
+                'Start API',
+                on_click=lambda: _start_api(reclaim=False),
             ).props('outline color=primary')
-            ui.button('Stop API', on_click=_stop_api).props('outline')
-            ui.button('List API port PIDs', on_click=_list_api_listeners).props('outline')
-            ui.button('Free API port', on_click=_free_api_port).props(
-                'outline color=negative'
+            start_btn.tooltip('Start the local API on the default port')
+
+            start_reclaim_btn = ui.button(
+                'Start API (force)',
+                on_click=lambda: _start_api(reclaim=True),
+            ).props('outline')
+            start_reclaim_btn.tooltip(
+                'Free the API port if needed, then start'
             )
 
-            def _open_demo() -> None:
-                status = controller.status(probe_health=False)
-                if not status.running:
-                    ui.notify('Start the API first.', type='warning')
-                    return
-                webbrowser.open(f'{status.base_url}/demo/v2/')
+            stop_btn = ui.button('Stop API', on_click=_stop_api).props('outline')
+            stop_btn.tooltip('Stop the local API (demo and clients will disconnect)')
 
-            def _open_docs() -> None:
-                status = controller.status(probe_health=False)
-                if not status.running:
-                    ui.notify('Start the API first.', type='warning')
-                    return
-                webbrowser.open(f'{status.base_url}/docs')
+            list_btn = ui.button('Who uses API port?', on_click=_list_api_listeners).props(
+                'flat'
+            )
+            list_btn.tooltip('Show which process is holding the API port')
 
-            ui.button('Open demo', on_click=_open_demo).props('outline')
-            ui.button('API docs (/docs)', on_click=_open_docs).props('outline')
+            free_btn = ui.button('Free API port', on_click=_free_api_port).props(
+                'flat color=negative'
+            )
+            free_btn.tooltip('Stop our API and clear anything blocking the port')
 
-            async def _show_health() -> None:
-                status = controller.status(probe_health=False)
-                if not status.running:
-                    ui.notify('Start the API first.', type='warning')
-                    return
-                url = status.health_url
-                try:
-                    def _fetch() -> str:
-                        with urllib.request.urlopen(url, timeout=5) as resp:
-                            return resp.read().decode('utf-8')
+            open_log_btn = ui.button('Open log file', on_click=_open_log).props('flat')
+            open_log_btn.tooltip('Open the log file in your default viewer')
 
-                    raw = await asyncio.to_thread(_fetch)
-                    try:
-                        text = json.dumps(json.loads(raw), indent=2)
-                    except json.JSONDecodeError:
-                        text = raw
-                    logger.info('Health %s\n%s', url, text)
-                    ui.notify('Health OK (see log).', type='positive')
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning('Health request failed: %s — %s', url, exc)
-                    ui.notify(f'Health request failed: {exc}', type='negative')
-                _refresh_status()
+            quit_btn = ui.button('Quit', on_click=_quit).props('flat color=negative')
+            quit_btn.tooltip('Stop the API and close this window')
 
-            ui.button('Show health', on_click=_show_health).props('outline')
+        def _sync_controls() -> None:
+            """Enable/disable actions from current API running state."""
+            running = controller.status(probe_health=False).running
+            # Clients need a live API.
+            open_demo_btn.set_enabled(running)
+            api_docs_btn.set_enabled(running)
+            health_btn.set_enabled(running)
+            # Start only when stopped; stop only when running.
+            start_btn.set_enabled(not running)
+            start_reclaim_btn.set_enabled(not running)
+            stop_btn.set_enabled(running)
+            # Diagnostics always available.
+            list_btn.set_enabled(True)
+            free_btn.set_enabled(True)
+            open_log_btn.set_enabled(True)
+            quit_btn.set_enabled(True)
 
-            def _open_log() -> None:
-                try:
-                    _open_path_with_default_app(log_path)
-                except FileNotFoundError:
-                    ui.notify('Log file is not available yet.', type='warning')
-                except OSError as exc:
-                    ui.notify(f'Unable to open log file: {exc}', type='negative')
-                    logger.warning('Failed to open log %s: %s', log_path, exc)
+        _sync_controls()
 
-            ui.button('Open log', on_click=_open_log).props('outline')
-
-            def _quit() -> None:
-                logger.info('Quit requested from status UI')
-                controller.stop()
-                nicegui_app.shutdown()
-
-            ui.button('Quit', on_click=_quit).props('flat color=negative')
-
-        ui.label('Server log').classes('text-caption text-grey-5')
-        with ui.scroll_area().classes('w-full border rounded').style('height: 320px'):
+        # In-memory process buffer via get_ui_log_text(); see module docstring.
+        ui.label('Log').classes('text-caption text-grey-5')
+        with ui.scroll_area().classes('w-full border rounded').style('height: 280px'):
             log_view = (
                 ui.label(get_ui_log_text())
                 .classes('w-full font-mono whitespace-pre-wrap text-xs select-text')
@@ -257,16 +310,16 @@ def build_status_page(
                 log_view.set_text(text)
 
         ui.timer(0.5, _refresh_log)
-        ui.timer(0.5, _refresh_status)
 
     with ui.footer().classes('bg-grey-10 text-grey-4 q-px-md q-py-xs'):
         footer = ui.label(
             format_status_line(controller.status(), ui_bind=ui_bind)
         ).classes('text-caption')
 
-        def _refresh_footer() -> None:
+        def _refresh_footer_and_controls() -> None:
             text = format_status_line(controller.status(), ui_bind=ui_bind)
             if footer.text != text:
                 footer.set_text(text)
+            _sync_controls()
 
-        ui.timer(0.5, _refresh_footer)
+        ui.timer(0.5, _refresh_footer_and_controls)

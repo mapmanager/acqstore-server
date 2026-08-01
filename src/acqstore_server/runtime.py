@@ -122,7 +122,9 @@ class ServerController:
 
         if reclaim:
             self.reclaim_port(port=resolved_port)
-        elif not _bind_available(resolved_host, resolved_port):
+        elif list_listening_pids(resolved_port) or not _bind_available(
+            resolved_host, resolved_port
+        ):
             raise PortInUseError(
                 f'Port {resolved_port} is already in use on {resolved_host}'
             )
@@ -200,12 +202,20 @@ class ServerController:
             PortReclaimError: If the port cannot be freed.
         """
         target = int(port if port is not None else self._port)
-        if self.is_running and (port is None or int(port) == self._port):
+        # Always stop our managed thread if it is still alive (do not trust a
+        # "should_exit" flag alone — the listen socket can still be held).
+        if self._thread_alive():
             self.stop()
-        try:
-            return reclaim_port(target)
-        except PortReclaimError:
-            raise
+        if not _wait_until_no_listeners(target, timeout_s=3.0):
+            killed = reclaim_port(target)
+            if not _wait_until_no_listeners(target, timeout_s=2.0):
+                leftover = list_listening_pids(target)
+                raise PortReclaimError(
+                    f'Port {target} is still busy after stop/reclaim '
+                    f'(pids={leftover}). Quit and relaunch, or use Start API (force).'
+                )
+            return killed
+        return reclaim_port(target)
 
     def list_port_listeners(self, *, port: int | None = None) -> list[int]:
         """Return PIDs listening on ``port`` (default: configured API port)."""
@@ -240,6 +250,9 @@ class ServerController:
                 self._server = None
                 self._thread = None
                 self._last_error = None
+
+        # Wait for the listen socket to release before callers try to re-bind.
+        _wait_until_no_listeners(port, timeout_s=2.0)
 
         return self._status_unlocked(
             host=host,
@@ -281,14 +294,17 @@ class ServerController:
 
     @property
     def is_running(self) -> bool:
+        """True while the managed uvicorn thread is still alive.
+
+        Do not treat ``should_exit`` alone as stopped — the listen socket can
+        remain bound until the thread actually finishes.
+        """
+        return self._thread_alive()
+
+    def _thread_alive(self) -> bool:
         with self._lock:
             thread = self._thread
-            server = self._server
-        if thread is None or not thread.is_alive():
-            return False
-        if server is not None and server.should_exit:
-            return False
-        return True
+        return thread is not None and thread.is_alive()
 
     def _run_server(self, server: uvicorn.Server) -> None:
         try:
@@ -357,13 +373,30 @@ def _bind_available(host: str, port: int) -> bool:
     """Return True if this process can bind a listen socket on ``host:port``."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        # Do not set SO_REUSEADDR: we want a real conflict with an existing LISTEN.
+        # Match uvicorn's typical SO_REUSEADDR so post-stop checks agree with re-bind.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((host, port))
     except OSError:
         return False
     finally:
         sock.close()
     return True
+
+
+def _wait_until_no_listeners(port: int, *, timeout_s: float) -> bool:
+    """Poll until no process has a TCP LISTEN on ``port``."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            if not list_listening_pids(port):
+                return True
+        except PortReclaimError:
+            return False
+        time.sleep(0.05)
+    try:
+        return not list_listening_pids(port)
+    except PortReclaimError:
+        return False
 
 
 def bind_available(host: str, port: int) -> bool:

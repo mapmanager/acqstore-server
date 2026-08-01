@@ -32,3 +32,24 @@ def test_format_status_line_stopped_with_error() -> None:
     text = format_status_line(status, ui_bind='127.0.0.1:8766')
     assert 'API stopped' in text
     assert 'port in use' in text
+
+
+def test_force_process_exit_schedules_os_exit(monkeypatch) -> None:
+    import acqstore_server.status_ui as status_ui
+
+    calls: list[float] = []
+
+    monkeypatch.setattr(status_ui.time, 'sleep', lambda s: calls.append(float(s)))
+    monkeypatch.setattr(status_ui.os, '_exit', lambda code: calls.append(float(code)))
+
+    class ImmediateThread:
+        def __init__(self, target=None, name=None, daemon=None):
+            self._target = target
+
+        def start(self) -> None:
+            assert self._target is not None
+            self._target()
+
+    monkeypatch.setattr(status_ui.threading, 'Thread', ImmediateThread)
+    status_ui._force_process_exit(delay_s=0.01)
+    assert calls == [0.01, 0.0]
