@@ -38,8 +38,8 @@ def test_server_serializes_transport_neutral_open_result(format_name: str) -> No
 
     client = TestClient(
         create_app(
-            v2_session_store=SessionStore(ttl_seconds=60.0),
-            v2_open_fn=fake_open,
+            session_store=SessionStore(ttl_seconds=60.0),
+            open_fn=fake_open,
         )
     )
     response = client.post(
@@ -73,7 +73,7 @@ def test_server_forwards_channel_selection_to_open_boundary() -> None:
         received.append(channel_indices)
         return opened_acquisition_fixture(path, channel_indices=(2,))
 
-    client = TestClient(create_app(v2_open_fn=fake_open))
+    client = TestClient(create_app(open_fn=fake_open))
     response = client.post(
         '/api/v2/open',
         json={'path': '/virtual/source.oir', 'channelIndices': [2]},

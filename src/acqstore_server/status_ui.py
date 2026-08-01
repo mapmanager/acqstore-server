@@ -16,7 +16,7 @@ from nicegui import ui
 
 from acqstore_server.gui_defaults import setUpGuiDefaults
 from acqstore_server.logging_setup import get_logger, get_ui_log_text, log_file_path
-from acqstore_server.routes import APP_NAME, APP_VERSION
+from acqstore_server.constants import APP_NAME, APP_VERSION
 
 logger = get_logger('status_ui')
 

@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from acqstore.acq_image.supported_import_extensions import get_supported_import_extensions
-from acqstore_server.open_service import OpenServiceError
+from acqstore_server.v2.open_service import OpenServiceError
 
 
 def default_extensions() -> list[str]:

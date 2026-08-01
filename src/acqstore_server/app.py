@@ -1,31 +1,30 @@
-"""FastAPI / NiceGUI entry for AcqStore Server."""
+"""FastAPI / NiceGUI entry for AcqStore Server (API v2)."""
 
 from __future__ import annotations
 
 import os
 import sys
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from acqstore_server.dialogs import pick_acquisition_file
-from acqstore_server.logging_setup import ensure_logging, get_logger, log_file_path
-from acqstore_server.routes import (
+from acqstore_server.constants import (
     APP_NAME,
     APP_VERSION,
     DEFAULT_HOST,
     DEFAULT_PORT,
     PickFileFn,
-    register_api_routes,
 )
-from acqstore_server.session_store import SessionStore
+from acqstore_server.dialogs import pick_acquisition_file
+from acqstore_server.logging_setup import ensure_logging, get_logger, log_file_path
 from acqstore_server.v2.demo import register_demo_routes as register_v2_demo_routes
 from acqstore_server.v2.open_service import open_acquisition
 from acqstore_server.v2.routes import (
     OpenAcquisitionFn,
     create_router as create_v2_router,
 )
-from acqstore_server.v2.session_store import SessionStore as V2SessionStore
+from acqstore_server.v2.session_store import SessionStore
 
 _TRUE = {'1', 'true', 'yes', 'y', 'on'}
 
@@ -36,35 +35,78 @@ def _env_true(name: str, default: str = '0') -> bool:
     return os.environ.get(name, default).strip().lower() in _TRUE
 
 
+def attach_api(
+    app: Any,
+    *,
+    session_store: SessionStore | None = None,
+    pick_file_fn: PickFileFn | None = None,
+    open_fn: OpenAcquisitionFn = open_acquisition,
+    include_root_json: bool = False,
+    mount_demo: bool = True,
+) -> SessionStore:
+    """Attach API v2 routes (and optional demo / root JSON) to an ASGI app.
+
+    Args:
+        app: FastAPI or NiceGUI app.
+        session_store: Optional in-memory session store (tests / embedding).
+        pick_file_fn: Optional native file picker override.
+        open_fn: Acquisition opener (tests may inject).
+        include_root_json: When true, register ``GET /`` discovery JSON.
+        mount_demo: When true, register ``/demo/v2/`` and ``/demo/`` redirect.
+
+    Returns:
+        The session store bound to the mounted router.
+    """
+    store = session_store or SessionStore()
+    pick_file = pick_file_fn or pick_acquisition_file
+    app.include_router(create_v2_router(store=store, pick_file=pick_file, open_fn=open_fn))
+    if mount_demo:
+        register_v2_demo_routes(app)
+    if include_root_json:
+
+        @app.get('/')
+        def root() -> dict[str, object]:
+            host = os.environ.get('ACQSTORE_SERVER_HOST', DEFAULT_HOST)
+            port = int(os.environ.get('ACQSTORE_SERVER_PORT', str(DEFAULT_PORT)))
+            return {
+                'ok': True,
+                'app': APP_NAME,
+                'version': APP_VERSION,
+                'bind': f'{host}:{port}',
+                'api': '/api/v2',
+                'health': '/api/v2/health',
+                'docs': '/docs',
+                'demo': '/demo/v2/',
+                'hint': 'Clients: POST /api/v2/pick-and-open or /api/v2/open.',
+            }
+
+    return store
+
+
 def create_app(
     *,
     session_store: SessionStore | None = None,
     pick_file_fn: PickFileFn | None = None,
-    v2_session_store: V2SessionStore | None = None,
-    v2_open_fn: OpenAcquisitionFn = open_acquisition,
+    open_fn: OpenAcquisitionFn = open_acquisition,
 ) -> FastAPI:
     """Build the AcqStore Server ASGI app (API-only / CLI mode).
 
     Args:
         session_store: Optional store override (tests).
         pick_file_fn: Optional native/open picker override (tests).
-        v2_session_store: Optional API v2 store override (tests).
-        v2_open_fn: Optional API v2 acquisition opener override (tests).
+        open_fn: Optional acquisition opener override (tests).
 
     Returns:
         Configured :class:`fastapi.FastAPI` instance.
     """
     ensure_logging()
-    store = session_store or SessionStore()
-    v2_store = v2_session_store or V2SessionStore()
-    pick_file = pick_file_fn or pick_acquisition_file
     app = FastAPI(
         title='AcqStore Server',
         version=APP_VERSION,
         description=(
             'Local HTTP API for opening acquisition files with AcqStore and '
             'serving selected two-dimensional channel planes. Use /docs for '
-            'interactive OpenAPI. Demo UIs at /demo/ (v1) and /demo/v2/.'
+            'interactive OpenAPI. Demo UI at /demo/v2/.'
         ),
         docs_url='/docs',
         redoc_url='/redoc',
@@ -77,56 +119,71 @@ def create_app(
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    register_api_routes(app, store, pick_file, include_root_json=True, mount_demo=True)
-    app.include_router(
-        create_v2_router(store=v2_store, pick_file=pick_file, open_fn=v2_open_fn)
+    attach_api(
+        app,
+        session_store=session_store,
+        pick_file_fn=pick_file_fn,
+        open_fn=open_fn,
+        include_root_json=True,
+        mount_demo=True,
     )
-    register_v2_demo_routes(app)
     return app
 
 
-def _resolve_bind() -> tuple[str, int]:
-    host = os.environ.get('ACQSTORE_SERVER_HOST', DEFAULT_HOST)
-    port = int(os.environ.get('ACQSTORE_SERVER_PORT', str(DEFAULT_PORT)))
-    if host not in {'127.0.0.1', 'localhost'}:
-        raise SystemExit(
-            f'AcqStore Server v0 binds localhost only; refused host={host!r}. '
-            'Set ACQSTORE_SERVER_HOST=127.0.0.1'
+def resolve_bind(
+    host: str | None = None,
+    port: int | None = None,
+) -> tuple[str, int]:
+    """Resolve bind host/port from args or environment.
+
+    Args:
+        host: Explicit host, or ``None`` to use ``ACQSTORE_SERVER_HOST`` / default.
+        port: Explicit port, or ``None`` to use ``ACQSTORE_SERVER_PORT`` / default.
+
+    Returns:
+        ``(host, port)`` suitable for localhost-only serving.
+
+    Raises:
+        ValueError: If the resolved host is not loopback.
+    """
+    resolved_host = (
+        host
+        if host is not None
+        else os.environ.get('ACQSTORE_SERVER_HOST', DEFAULT_HOST)
+    )
+    if port is not None:
+        resolved_port = int(port)
+    else:
+        resolved_port = int(os.environ.get('ACQSTORE_SERVER_PORT', str(DEFAULT_PORT)))
+    if resolved_host not in {'127.0.0.1', 'localhost'}:
+        raise ValueError(
+            f'AcqStore Server binds localhost only; refused host={resolved_host!r}. '
+            'Use host=127.0.0.1 or set ACQSTORE_SERVER_HOST=127.0.0.1'
         )
-    return host, port
+    return resolved_host, resolved_port
+
+
+def _resolve_bind() -> tuple[str, int]:
+    """CLI bind helper; exits the process on invalid host (legacy behavior)."""
+    try:
+        return resolve_bind()
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def main_uvicorn() -> None:
     """Run API-only uvicorn (no native window)."""
-    import uvicorn
+    from acqstore_server.runtime import ServerController
 
     ensure_logging()
     host, port = _resolve_bind()
-    logger.info('%s v%s listening http://%s:%s', APP_NAME, APP_VERSION, host, port)
-    logger.info('health http://%s:%s/api/v2/health', host, port)
-    logger.info('demo http://%s:%s/demo/v2/', host, port)
-    logger.info('log file %s', log_file_path())
-    print(f'[acqstore_server] {APP_NAME} v{APP_VERSION}')
-    print(f'[acqstore_server] listening http://{host}:{port}')
-    print(f'[acqstore_server] demo http://{host}:{port}/demo/v2/')
-    print(f'[acqstore_server] API docs http://{host}:{port}/docs')
-    print(f'[acqstore_server] log {log_file_path()}')
-    print('[acqstore_server] stop: Ctrl+C in this terminal')
-    print(
-        f'[acqstore_server] if port busy: '
-        f'kill $(lsof -nP -iTCP:{port} -sTCP:LISTEN -t)'
-    )
-
+    controller = ServerController()
     try:
-        # Use the module-level ``app`` (not factory=True) so create_app runs once.
-        uvicorn.run(
-            app,
-            host=host,
-            port=port,
-            log_level='info',
-        )
-    except OSError as exc:
-        if getattr(exc, 'errno', None) in {48, 98}:
+        status = controller.start(host=host, port=port, app=app)
+    except Exception as exc:  # noqa: BLE001 — CLI surfaces typed runtime errors
+        from acqstore_server.runtime import PortInUseError
+
+        if isinstance(exc, PortInUseError):
             logger.error('Port %s already in use: %s', port, exc)
             print(
                 f'[acqstore_server] ERROR: port {port} is already in use.\n'
@@ -138,6 +195,26 @@ def main_uvicorn() -> None:
             )
             raise SystemExit(1) from exc
         raise
+
+    logger.info('%s v%s listening http://%s:%s', APP_NAME, APP_VERSION, host, port)
+    logger.info('health http://%s:%s/api/v2/health', host, port)
+    logger.info('demo http://%s:%s/demo/v2/', host, port)
+    logger.info('log file %s', log_file_path())
+    print(f'[acqstore_server] {APP_NAME} v{APP_VERSION}')
+    print(f'[acqstore_server] listening {status.base_url}')
+    print(f'[acqstore_server] demo {status.base_url}/demo/v2/')
+    print(f'[acqstore_server] API docs {status.base_url}/docs')
+    print(f'[acqstore_server] log {log_file_path()}')
+    print('[acqstore_server] stop: Ctrl+C in this terminal')
+    print(
+        f'[acqstore_server] if port busy: '
+        f'kill $(lsof -nP -iTCP:{port} -sTCP:LISTEN -t)'
+    )
+
+    try:
+        controller.wait()
+    except KeyboardInterrupt:
+        controller.stop()
 
 
 def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
@@ -179,7 +256,7 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
 
 
 def main_native() -> None:
-    """Run NiceGUI native status window + same API routes on one port."""
+    """Run NiceGUI native status window + API v2 routes on one port."""
     from nicegui import app as nicegui_app
     from nicegui import ui
 
@@ -187,8 +264,6 @@ def main_native() -> None:
 
     ensure_logging()
     host, port = _resolve_bind()
-    store = SessionStore()
-    v2_store = V2SessionStore()
     pick_file = pick_acquisition_file
 
     nicegui_app.add_middleware(
@@ -198,15 +273,12 @@ def main_native() -> None:
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    register_api_routes(
+    attach_api(
         nicegui_app,
-        store,
-        pick_file,
+        pick_file_fn=pick_file,
         include_root_json=False,
         mount_demo=True,
     )
-    nicegui_app.include_router(create_v2_router(store=v2_store, pick_file=pick_file))
-    register_v2_demo_routes(nicegui_app)
 
     @ui.page('/')
     def _status_page() -> None:

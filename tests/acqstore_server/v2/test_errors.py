@@ -78,12 +78,6 @@ def test_invalid_path_parameter_uses_v2_error_envelope() -> None:
     ]
 
 
-def test_v1_validation_contract_is_not_changed() -> None:
+def test_v1_routes_are_removed() -> None:
     response = TestClient(create_app()).post('/api/v1/open', json={})
-
     assert response.status_code == 404
-    assert response.json() == {
-        'ok': False,
-        'error': 'path_not_found',
-        'message': 'JSON body must include string "path"',
-    }

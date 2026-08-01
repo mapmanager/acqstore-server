@@ -23,7 +23,7 @@ def _write_cyx_tif(path: Path, shape: tuple[int, int, int] = (3, 5, 4)) -> np.nd
 def test_v2_open_and_download_selected_channels(tmp_path: Path) -> None:
     path = tmp_path / 'multi.tif'
     source = _write_cyx_tif(path)
-    client = TestClient(create_app(v2_session_store=SessionStore()))
+    client = TestClient(create_app(session_store=SessionStore()))
 
     response = client.post(
         '/api/v2/open',
@@ -54,7 +54,7 @@ def test_v2_open_and_download_selected_channels(tmp_path: Path) -> None:
 def test_v2_open_loads_all_channels_when_omitted(tmp_path: Path) -> None:
     path = tmp_path / 'all.tif'
     _write_cyx_tif(path)
-    client = TestClient(create_app(v2_session_store=SessionStore()))
+    client = TestClient(create_app(session_store=SessionStore()))
     response = client.post('/api/v2/open', json={'path': str(path.resolve())})
     assert response.status_code == 200
     assert [item['index'] for item in response.json()['channels']] == [0, 1, 2]
@@ -65,7 +65,7 @@ def test_v2_pick_and_open_success_and_cancel(tmp_path: Path) -> None:
     _write_cyx_tif(path)
     client = TestClient(
         create_app(
-            v2_session_store=SessionStore(),
+            session_store=SessionStore(),
             pick_file_fn=lambda _extensions: str(path.resolve()),
         )
     )
@@ -83,7 +83,7 @@ def test_v2_missing_session_and_channel_errors(tmp_path: Path) -> None:
     path = tmp_path / 'one.tif'
     source = np.arange(20, dtype=np.uint16).reshape(5, 4)
     tifffile.imwrite(path, source, metadata={'axes': 'YX'}, photometric='minisblack')
-    client = TestClient(create_app(v2_session_store=SessionStore()))
+    client = TestClient(create_app(session_store=SessionStore()))
 
     missing = client.get('/api/v2/sessions/missing/channels/0/data')
     assert missing.status_code == 404
@@ -118,7 +118,7 @@ def test_v2_reference_channels_are_generic(
     monkeypatch.setattr(BaseFileLoader, 'has_reference_image', property(lambda self: True))
     monkeypatch.setattr(BaseFileLoader, 'reference_image', property(lambda self: reference))
 
-    client = TestClient(create_app(v2_session_store=SessionStore()))
+    client = TestClient(create_app(session_store=SessionStore()))
     response = client.post('/api/v2/open', json={'path': str(path.resolve())})
     assert response.status_code == 200
     payload = response.json()
@@ -154,7 +154,7 @@ def test_v2_open_timeout_returns_stable_error(
         return open_acquisition(path_value, channel_indices=channel_indices)
 
     monkeypatch.setenv('ACQSTORE_SERVER_OPEN_TIMEOUT_S', '0.001')
-    response = TestClient(create_app(v2_open_fn=slow_open)).post(
+    response = TestClient(create_app(open_fn=slow_open)).post(
         '/api/v2/open',
         json={'path': str(path)},
     )
@@ -171,7 +171,7 @@ def test_v2_negative_binary_channel_index_is_rejected() -> None:
 def test_v2_session_metadata_and_explicit_delete(tmp_path: Path) -> None:
     path = tmp_path / 'session-lifecycle.tif'
     source = _write_cyx_tif(path, shape=(2, 5, 4))
-    client = TestClient(create_app(v2_session_store=SessionStore(ttl_seconds=30.0)))
+    client = TestClient(create_app(session_store=SessionStore(ttl_seconds=30.0)))
 
     opened = client.post('/api/v2/open', json={'path': str(path.resolve())})
     assert opened.status_code == 200
@@ -211,7 +211,7 @@ def test_v2_capabilities_are_sourced_from_acqstore_public_api() -> None:
         get_supported_import_extensions,
     )
 
-    response = TestClient(create_app(v2_session_store=SessionStore(ttl_seconds=42.0))).get('/api/v2/capabilities')
+    response = TestClient(create_app(session_store=SessionStore(ttl_seconds=42.0))).get('/api/v2/capabilities')
 
     assert response.status_code == 200
     payload = response.json()
@@ -261,7 +261,7 @@ def test_v2_open_logs_human_readable_acquisition_summary(
 
     monkeypatch.setattr(v2_routes.logger, 'info', capture)
 
-    response = TestClient(create_app(v2_session_store=SessionStore())).post(
+    response = TestClient(create_app(session_store=SessionStore())).post(
         '/api/v2/open',
         json={'path': str(path.resolve())},
     )

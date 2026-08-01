@@ -2,31 +2,40 @@
 
 from __future__ import annotations
 
-import sys
 from types import SimpleNamespace
 
 import acqstore_server.app as app_module
 
 
 def test_main_uvicorn_prints_v2_demo_and_runs_server(monkeypatch, capsys) -> None:
-    calls: list[dict[str, object]] = []
+    starts: list[dict[str, object]] = []
+    waits: list[bool] = []
 
-    def fake_run(app: object, **kwargs: object) -> None:
-        calls.append({'app': app, **kwargs})
+    class FakeController:
+        def start(self, **kwargs: object) -> SimpleNamespace:
+            starts.append(kwargs)
+            return SimpleNamespace(
+                base_url='http://127.0.0.1:8767',
+                host='127.0.0.1',
+                port=8767,
+            )
+
+        def wait(self) -> None:
+            waits.append(True)
+
+        def stop(self) -> None:
+            return None
 
     monkeypatch.setattr(app_module, '_resolve_bind', lambda: ('127.0.0.1', 8767))
-    monkeypatch.setitem(sys.modules, 'uvicorn', SimpleNamespace(run=fake_run))
+    monkeypatch.setattr(
+        'acqstore_server.runtime.ServerController',
+        FakeController,
+    )
 
     app_module.main_uvicorn()
 
     output = capsys.readouterr().out
     assert 'http://127.0.0.1:8767/demo/v2/' in output
     assert 'http://127.0.0.1:8767/docs' in output
-    assert calls == [
-        {
-            'app': app_module.app,
-            'host': '127.0.0.1',
-            'port': 8767,
-            'log_level': 'info',
-        }
-    ]
+    assert starts == [{'host': '127.0.0.1', 'port': 8767, 'app': app_module.app}]
+    assert waits == [True]

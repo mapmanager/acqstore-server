@@ -38,7 +38,7 @@ def test_api_index_is_a_machine_and_human_discovery_entry_point() -> None:
 def test_generic_client_can_open_download_reshape_and_delete(tmp_path: Path) -> None:
     path = tmp_path / 'client-contract.tif'
     source = _write_multichannel_tiff(path)
-    client = TestClient(create_app(v2_session_store=SessionStore(ttl_seconds=60.0)))
+    client = TestClient(create_app(session_store=SessionStore(ttl_seconds=60.0)))
 
     capabilities = client.get('/api/v2/capabilities')
     assert capabilities.status_code == 200

@@ -41,7 +41,15 @@ def resolve_v2_demo_index() -> Path | None:
 
 
 def register_demo_routes(app: Any) -> None:
-    """Serve the independent API v2 JavaScript demo at ``/demo/v2/``."""
+    """Serve the API v2 JavaScript demo and redirect legacy ``/demo/`` bookmarks."""
+
+    @app.get('/demo', include_in_schema=False)
+    def demo_root_redirect() -> RedirectResponse:
+        return RedirectResponse(url='/demo/v2/', status_code=307)
+
+    @app.get('/demo/', include_in_schema=False)
+    def demo_root_slash_redirect() -> RedirectResponse:
+        return RedirectResponse(url='/demo/v2/', status_code=307)
 
     @app.get('/demo/v2', include_in_schema=False)
     def v2_demo_redirect() -> RedirectResponse:
