@@ -61,8 +61,8 @@ class ServerStatus:
 class ServerController:
     """Start, stop, and probe an API-only uvicorn server in a background thread.
 
-    The NiceGUI desktop entry (``main_native``) does not use this controller; it
-    co-mounts routes on ``ui.run``. CloudScope and tests should use this class.
+    Used by the API-only CLI, the NiceGUI status window (``main_native``), tests,
+    and future embedders such as CloudScope App.
     """
 
     def __init__(self) -> None:

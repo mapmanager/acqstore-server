@@ -14,6 +14,7 @@ from acqstore_server.constants import (
     APP_VERSION,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_UI_PORT,
     PickFileFn,
 )
 from acqstore_server.dialogs import pick_acquisition_file
@@ -134,7 +135,7 @@ def resolve_bind(
     host: str | None = None,
     port: int | None = None,
 ) -> tuple[str, int]:
-    """Resolve bind host/port from args or environment.
+    """Resolve API bind host/port from args or environment.
 
     Args:
         host: Explicit host, or ``None`` to use ``ACQSTORE_SERVER_HOST`` / default.
@@ -163,10 +164,57 @@ def resolve_bind(
     return resolved_host, resolved_port
 
 
+def resolve_ui_bind(
+    host: str | None = None,
+    port: int | None = None,
+) -> tuple[str, int]:
+    """Resolve NiceGUI status-window bind host/port.
+
+    Args:
+        host: Explicit host, or ``None`` to use ``ACQSTORE_SERVER_UI_HOST`` /
+            ``ACQSTORE_SERVER_HOST`` / default.
+        port: Explicit port, or ``None`` to use ``ACQSTORE_SERVER_UI_PORT`` /
+            default UI port (``8766``).
+
+    Returns:
+        ``(host, port)`` for the status UI listener.
+
+    Raises:
+        ValueError: If the resolved host is not loopback.
+    """
+    resolved_host = (
+        host
+        if host is not None
+        else os.environ.get(
+            'ACQSTORE_SERVER_UI_HOST',
+            os.environ.get('ACQSTORE_SERVER_HOST', DEFAULT_HOST),
+        )
+    )
+    if port is not None:
+        resolved_port = int(port)
+    else:
+        resolved_port = int(
+            os.environ.get('ACQSTORE_SERVER_UI_PORT', str(DEFAULT_UI_PORT))
+        )
+    if resolved_host not in {'127.0.0.1', 'localhost'}:
+        raise ValueError(
+            f'AcqStore Server UI binds localhost only; refused host={resolved_host!r}.'
+        )
+    return resolved_host, resolved_port
+
+
 def _resolve_bind() -> tuple[str, int]:
-    """CLI bind helper; exits the process on invalid host (legacy behavior)."""
+    """CLI API bind helper; exits the process on invalid host (legacy behavior)."""
     try:
         return resolve_bind()
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+
+def _resolve_ui_bind() -> tuple[str, int]:
+    """CLI UI bind helper; exits the process on invalid host."""
+    try:
+        return resolve_ui_bind()
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -220,23 +268,15 @@ def main_uvicorn() -> None:
 def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
     """Return ``ui.run`` kwargs for the native status window.
 
-    NiceGUI's ``ui.run`` installs Starlette ``GZipMiddleware`` by default
-    (``compresslevel=9``). Browsers send ``Accept-Encoding: gzip``, and that
-    middleware compresses the full body before sending response headers. Real
-    float32 session planes (~20 MB) are highly compressible and take on the
-    order of 15–20 seconds per GET at level 9; the same payload without gzip is
-    tens of milliseconds on localhost. API-only uvicorn never installs this
-    middleware. Pass ``gzip_middleware_factory=None`` so native mode matches.
+    The status UI no longer serves API binary planes; ``gzip_middleware_factory``
+    remains disabled so a future co-mount cannot regress plane latency.
 
     Args:
-        host: Bind host for ``ui.run``.
-        port: Bind port for ``ui.run``.
+        host: Bind host for ``ui.run`` (status UI only).
+        port: Bind port for ``ui.run`` (status UI only; default ``8766``).
 
     Returns:
         Keyword arguments for :func:`nicegui.ui.run`.
-
-    See also:
-        https://nicegui.io/documentation/section_configuration_deployment
     """
     return {
         'host': host,
@@ -245,53 +285,83 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
         'native': True,
         'reload': False,
         'dark': True,
-        'window_size': (560, 640),
+        'window_size': (640, 720),
         'show': True,
         'storage_secret': 'acqstore-server-local',
-        'fastapi_docs': True,
+        # API docs live on the ServerController port, not the status UI.
+        'fastapi_docs': False,
         'show_welcome_message': False,
-        # Required: do not gzip large API session binary responses.
         'gzip_middleware_factory': None,
     }
 
 
 def main_native() -> None:
-    """Run NiceGUI native status window + API v2 routes on one port."""
+    """Run NiceGUI status UI as a client of :class:`ServerController`.
+
+    The API listens on the API bind (default ``127.0.0.1:8767``). The status
+    window listens on the UI bind (default ``127.0.0.1:8766``).
+    """
     from nicegui import app as nicegui_app
     from nicegui import ui
 
+    from acqstore_server.runtime import PortInUseError, ServerController, ServerError
     from acqstore_server.status_ui import build_status_page
 
     ensure_logging()
-    host, port = _resolve_bind()
-    pick_file = pick_acquisition_file
+    api_host, api_port = _resolve_bind()
+    ui_host, ui_port = _resolve_ui_bind()
+    controller = ServerController()
 
-    nicegui_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=['*'],
-        allow_credentials=False,
-        allow_methods=['*'],
-        allow_headers=['*'],
-    )
-    attach_api(
-        nicegui_app,
-        pick_file_fn=pick_file,
-        include_root_json=False,
-        mount_demo=True,
-    )
+    try:
+        status = controller.start(host=api_host, port=api_port)
+        logger.info('API started at %s', status.base_url)
+    except PortInUseError as exc:
+        logger.error('API port in use at startup: %s', exc)
+        print(
+            f'[acqstore_server] WARNING: could not auto-start API on '
+            f'{api_host}:{api_port}: {exc}\n'
+            f'  Use Start API in the status window after freeing the port.',
+            file=sys.stderr,
+        )
+    except ServerError as exc:
+        logger.error('API failed to auto-start: %s', exc)
+        print(
+            f'[acqstore_server] WARNING: could not auto-start API: {exc}\n'
+            f'  Use Start API in the status window to retry.',
+            file=sys.stderr,
+        )
+
+    @nicegui_app.on_shutdown
+    def _stop_api_on_shutdown() -> None:
+        controller.stop()
 
     @ui.page('/')
     def _status_page() -> None:
-        build_status_page(host=host, port=port)
+        build_status_page(
+            controller=controller,
+            api_host=api_host,
+            api_port=api_port,
+            ui_host=ui_host,
+            ui_port=ui_port,
+        )
 
-    logger.info('%s v%s native UI http://%s:%s', APP_NAME, APP_VERSION, host, port)
+    api_base = f'http://{api_host}:{api_port}'
+    logger.info(
+        '%s v%s status UI http://%s:%s (API %s)',
+        APP_NAME,
+        APP_VERSION,
+        ui_host,
+        ui_port,
+        api_base,
+    )
     print(f'[acqstore_server] {APP_NAME} v{APP_VERSION} (native status UI)')
-    print(f'[acqstore_server] listening http://{host}:{port}')
-    print(f'[acqstore_server] demo http://{host}:{port}/demo/v2/')
+    print(f'[acqstore_server] status UI http://{ui_host}:{ui_port}')
+    print(f'[acqstore_server] API {api_base}')
+    print(f'[acqstore_server] demo {api_base}/demo/v2/')
     print(f'[acqstore_server] log {log_file_path()}')
-    print('[acqstore_server] Quit the status window to stop the server')
+    print('[acqstore_server] Quit the status window to stop the API')
 
-    ui.run(**native_ui_run_kwargs(host=host, port=port))
+    ui.run(**native_ui_run_kwargs(host=ui_host, port=ui_port))
 
 
 def main() -> None:
