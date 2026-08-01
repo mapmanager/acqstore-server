@@ -61,7 +61,7 @@ nav:
   - End user:
       - users/index.md
       - Get the desktop app: users/install.md
-      - Status window: users/gui.md
+      - Main window: users/gui.md
       - Built-in demo: users/demo.md
   - Build a client:
       - llm/index.md

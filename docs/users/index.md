@@ -1,6 +1,8 @@
 # End user
 
-Use the packaged desktop app on the same machine as your files. The app starts a local server on loopback and shows a main window.
+Use the packaged desktop app on the same machine as your files.
+
+The server is the local service (default `http://127.0.0.1:8767`) that opens acquisitions and serves them to clients. The main window starts, stops, and monitors that server.
 
 1. [Get the desktop app](install.md)
 2. [Main window](gui.md)

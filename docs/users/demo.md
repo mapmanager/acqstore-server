@@ -8,7 +8,7 @@ http://127.0.0.1:8767/demo/v2/
 
 ![AcqStore Server demo page](../assets/demo-app-html.png)
 
-The demo opens an acquisition and shows source and optional reference images, with display-only tools for contrast, composite color, axes, and navigation.
+The demo lets you open a file and view source and optional reference images. Tools for contrast, composite color, axes, and navigation help you explore what was opened.
 
 ## Open a file
 
@@ -17,7 +17,7 @@ The demo opens an acquisition and shows source and optional reference images, wi
 3. The page shows **Source channels** on top and **Reference channels** below when a reference attachment exists. Each pane includes contrast controls for its channels.
 4. Opening another file replaces the previous demo session and loads the new one.
 
-Supported file types come from AcqStore at runtime. Prefer `GET /api/v2/capabilities` over hard-coding extensions (typical examples include `.tif`, `.oir`, `.czi`, `.nd2`, and OME-Zarr variants). The demo UI does not list formats; use capabilities (or the OpenAPI docs) when you need the allowed list.
+Supported file types come from [AcqStore](https://mapmanager.github.io/acqstore/loading/#supported-formats) at runtime. Prefer `GET /api/v2/capabilities` over hard-coding extensions (typical examples include `.tif`, `.oir`, `.czi`, `.nd2`, and OME-Zarr variants). The demo UI does not list formats; use capabilities (or the OpenAPI docs) when you need the allowed list.
 
 ## Contrast
 

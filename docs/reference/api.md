@@ -49,11 +49,12 @@ Example response:
 ```json
 {
   "ok": true,
-  "apiVersion": "v2"
+  "apiVersion": "v2",
+  "serverVersion": "0.2.0"
 }
 ```
 
-Use this as the lightest check that the local server and v2 router are available.
+`apiVersion` is the HTTP contract (`v2`). `serverVersion` is the installed AcqStore Server package version. Use this as the lightest check that the local server and v2 router are available.
 
 ### `GET /api/v2/capabilities`
 

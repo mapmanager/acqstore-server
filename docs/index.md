@@ -1,17 +1,19 @@
 # AcqStore Server
 
-AcqStore Server is a **desktop app**: a main window plus an HTTP API that opens scientific image files with AcqStore and serves metadata and image planes to thin clients (browser pages, custom JavaScript, and the built-in demo).
+AcqStore Server is a desktop app. When you run it, you get a main window and a local server. The main window lets you start, stop, and monitor the server. The server opens scientific image files with [AcqStore](https://mapmanager.github.io/acqstore/) and serves metadata and image planes to thin clients.
+
+One thin client ships with the app: the [built-in demo](users/demo.md) at `/demo/v2/`. You can also build your own HTML or JavaScript page that talks to the same API v2.
 
 This site covers:
 
-- using the packaged desktop app and its main window
-- the built-in demo page at `/demo/v2/`
-- building your own HTML/JavaScript client against **API v2**
+- Using the packaged desktop app and its main window
+- The built-in demo
+- Building your own HTML/JavaScript client against API v2
 
 ## Start here
 
 - [Get the desktop app](users/install.md) — request and run the packaged app
-- [Main window](users/gui.md) — header, Documentation link, and action buttons
+- [Main window](users/gui.md) — control the server and open the demo
 - [Built-in demo](users/demo.md) — open a file and view images
 - [Build a client](llm/index.md) — hub for the first JavaScript / LLM path
 - [LLM prompt](llm/prompt.md) — copy-paste prompt for an agent

@@ -1,65 +1,29 @@
 # Changelog
 
-All notable changes to AcqStore Server will be documented in this file.
+## [0.2.0] — 2026-08-01
 
-This project uses a simple changelog format inspired by Keep a Changelog. During development, add changes under `[Unreleased]`. When preparing a release, move those entries into a versioned section and leave a fresh empty `[Unreleased]` section at the top.
+### Breaking
+
+- Removed HTTP **API v1**. Only **API v2** (`/api/v2`, `/demo/v2/`) remains. Legacy `/demo/` redirects to `/demo/v2/`.
+
+### Added
+
+- Programmatic **`ServerController`** (`start` / `stop` / `status`, optional `start(reclaim=True)`) for embedders and tests.
+- Main-window **server controls**: Start server, Stop server, Who uses server port?, Free server port.
+- Package version from install metadata (`acqstore_server.__version__`); CLI `--version` / `-V`; `GET /api/v2/health` includes `serverVersion`.
+- Public docs site at [mapmanager.github.io/acqstore-server](https://mapmanager.github.io/acqstore-server/) (GitHub Pages workflow).
+- Modular built-in demo under `static/demo/v2/` (ES modules); frozen monolith kept under `archive/` for reference.
+
+### Changed
+
+- Desktop **main window** drives the HTTP server via `ServerController` (default server URL `http://127.0.0.1:8767`). Closing the window stops the server.
+- Main-window layout: **Clients** (Open demo, API docs, Check health) and **Server** (start/stop/port tools, Open log file); header shows app name + one version + Documentation; footer shows server status only.
+- Packaged app bind defaults updated for the split listener setup (status window vs server).
+- Demo UX: Open File flow, per-pane contrast/composite/axes, viewport zoom/pan, optional reference scan-path overlay, collapsible session/header sections (see user demo docs).
+
+### Removed
+
+- Main-window **Quit** and **Start server (force)** buttons (use the window close / app Quit menu; free the port then Start when needed).
+- API v1 modules, routes, and demo.
 
 ## [Unreleased]
-
-### Desktop / NiceGUI
-
-Added:
-
-- Main-window header: app name · version · **Documentation** (opens the public documentation site).
-
-Changed:
-
-- Main-window footer shows the bind address (`host:port`) only; version moved into the header.
-
-### Demo (`/demo/v2/`)
-
-Added:
-
-- Modular ES-module layout under `static/demo/v2/` (`css/demo.css`, `js/*.js`); `/demo/v2/` now serves the demo directory (not only `index.html`).
-- Frozen hygiene monolith at `static/demo/v2/archive/index.monolith.html` (unserved reference).
-
-Changed:
-
-- Demo entry `index.html` is markup-only and loads `./js/app.js` as `type="module"`.
-
-
-- Per-pane **Contrast** cards (one row per channel with Color LUT and Range…); shared Range popover with log-scaled histogram, min/max, and Auto (display-only).
-- Reference **Show scan path** overlay (polyline + points from `scanPath`, with `lineRoi` fallback).
-- Collapsible **Session** and **Open response** sections.
-- Per-canvas image viewport: mouse-wheel / pinch zoom; **square** images use drag square-region zoom; **non-square** images use horizontal/vertical **axis-zoom** drag; **Shift+drag** pan; double-click reset (independent per channel for now).
-- Horizontal drag splitter between source and reference panes (enabled when a reference image is present); canvases flex-fill the pane height.
-- Independent **Composite** checkboxes for source and for reference: each channel uses its LUT + range, then RGB values are added (defaults channel 0 green / channel 1 magenta).
-- Per-pane **Axes** checkbox: tick labels in physical units from `plane.axes`.
-
-Changed:
-
-- Renamed **Pick and open** to **Open File**; removed the server-accessible path text box and **Open path** button from the demo UI.
-- Successful **Open File** deletes the previous demo session before showing the new one; removed the **Delete session** button.
-- Removed subtitle, server-readiness / allowed-formats status line, and long per-card axis meta strings (formats stay in docs / `GET /api/v2/capabilities`).
-- Compact top chrome: **Loaded …** sits on the same row as **Open File**; channel labels are zero-based (`Channel 0`, …) without vendor `CH1`/`CH2` names.
-- Composite / Show scan path / Axes toggles sit left of the pane heading (not right-justified).
-- Canvas wrap `min-height` is `0` so the source/reference splitter can collapse either pane fully.
-- Page order: source channels → reference channels → AcqStore header → open response → session (header / open / session are collapsed `<details>`).
-- Contrast no longer uses a global channel dropdown; LUT/Range controls live inside each source and reference pane.
-- Plane rendering uses precomputed 256-entry LUT tables for faster redraws.
-- Initial view for non-square (kymograph) planes stretches to fill the viewport width and height (`scaleX` / `scaleY`); square planes keep aspect-preserving contain.
-
-### Documentation
-
-Added:
-
-- GitHub Pages deploy job in `.github/workflows/docs.yml` (PR build-only; push to `main` / manual dispatch deploys).
-- Maintainer reference copies of the linescan analyzer HTML under `docs-dev/reference-clients/`.
-
-Changed:
-
-- Public docs URL is `https://mapmanager.github.io/acqstore-server/` (`mkdocs.yml`, README, status UI).
-- User docs refer to the **main window** (not “status window”); home page describes a desktop app (not a “small” app).
-- Live Swagger / OpenAPI links live on the [Main window](docs/users/gui.md) page (removed from the docs home page).
-- User and reference demo docs updated for the current demo UI; wording tightened for end users.
-- Refreshed docs screenshots: `docs/assets/demo-app-html.png`, `docs/assets/acqstore-server-gui.png`.

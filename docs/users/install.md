@@ -33,7 +33,7 @@ Contact Robert Cudmore ([robert.cudmore@gmail.com](mailto:robert.cudmore@gmail.c
 
 ## After it starts
 
-The main window appears and the local API listens on:
+The main window appears. The server listens on:
 
 ```text
 http://127.0.0.1:8767
