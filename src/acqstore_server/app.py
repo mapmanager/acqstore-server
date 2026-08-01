@@ -239,9 +239,9 @@ def main_uvicorn() -> None:
     ):
         print(
             f'[acqstore_server] AcqStore Server desktop already looks running '
-            f'(API {host}:{port}, UI {ui_host}:{ui_port}).\n'
+            f'(server {host}:{port}, UI {ui_host}:{ui_port}).\n'
             f'  Use the open status window, or Quit that window first.\n'
-            f'  From the GUI: Free API port / Start API (reclaim) if needed.',
+            f'  From the GUI: Free server port, then Start server if needed.',
             file=sys.stderr,
         )
         raise SystemExit(0)
@@ -254,7 +254,7 @@ def main_uvicorn() -> None:
             logger.error('Port %s already in use: %s', port, exc)
             print(
                 f'[acqstore_server] ERROR: port {port} is already in use.\n'
-                f'  If a desktop window is open, Quit it or use Free API port there.\n'
+                f'  If a desktop window is open, Quit it or use Free server port there.\n'
                 f'  Or inspect/kill the listener:\n'
                 f'    lsof -nP -iTCP:{port} -sTCP:LISTEN\n'
                 f'    kill $(lsof -nP -iTCP:{port} -sTCP:LISTEN -t)',
@@ -344,7 +344,7 @@ def main_native() -> None:
     ):
         print(
             f'[acqstore_server] AcqStore Server already looks running '
-            f'(API {api_host}:{api_port}, UI {ui_host}:{ui_port}).\n'
+            f'(server {api_host}:{api_port}, UI {ui_host}:{ui_port}).\n'
             f'  Use the existing status window, or Quit it first.\n'
             f'  If no window is visible (stale process), free both ports:\n'
             f'    lsof -nP -iTCP:{ui_port} -sTCP:LISTEN\n'
@@ -358,7 +358,7 @@ def main_native() -> None:
     if not bind_available(ui_host, ui_port):
         print(
             f'[acqstore_server] ERROR: status UI port {ui_host}:{ui_port} is in use,\n'
-            f'  but the API port {api_host}:{api_port} may still be free.\n'
+            f'  but the server port {api_host}:{api_port} may still be free.\n'
             f'  Free or quit whatever holds {ui_port}, then retry:\n'
             f'    lsof -nP -iTCP:{ui_port} -sTCP:LISTEN\n'
             f'    kill $(lsof -nP -iTCP:{ui_port} -sTCP:LISTEN -t)',
@@ -370,21 +370,20 @@ def main_native() -> None:
 
     try:
         status = controller.start(host=api_host, port=api_port)
-        logger.info('API started at %s', status.base_url)
+        logger.info('Server started at %s', status.base_url)
     except PortInUseError as exc:
-        logger.error('API port in use at startup: %s', exc)
+        logger.error('Server port in use at startup: %s', exc)
         print(
-            f'[acqstore_server] WARNING: could not auto-start API on '
+            f'[acqstore_server] WARNING: could not auto-start server on '
             f'{api_host}:{api_port}: {exc}\n'
-            f'  Status UI will still open. Use Free API port or '
-            f'Start API (reclaim).',
+            f'  Status UI will still open. Use Free server port, then Start server.',
             file=sys.stderr,
         )
     except ServerError as exc:
-        logger.error('API failed to auto-start: %s', exc)
+        logger.error('Server failed to auto-start: %s', exc)
         print(
-            f'[acqstore_server] WARNING: could not auto-start API: {exc}\n'
-            f'  Use Start API in the status window to retry.',
+            f'[acqstore_server] WARNING: could not auto-start server: {exc}\n'
+            f'  Use Start server in the status window to retry.',
             file=sys.stderr,
         )
 
@@ -408,7 +407,7 @@ def main_native() -> None:
 
     api_base = f'http://{api_host}:{api_port}'
     logger.info(
-        '%s v%s status UI http://%s:%s (API %s)',
+        '%s v%s status UI http://%s:%s (server %s)',
         APP_NAME,
         APP_VERSION,
         ui_host,
@@ -417,10 +416,10 @@ def main_native() -> None:
     )
     print(f'[acqstore_server] {APP_NAME} v{APP_VERSION} (native status UI)')
     print(f'[acqstore_server] status UI http://{ui_host}:{ui_port}')
-    print(f'[acqstore_server] API {api_base}')
+    print(f'[acqstore_server] server {api_base}')
     print(f'[acqstore_server] demo {api_base}/demo/v2/')
     print(f'[acqstore_server] log {log_file_path()}')
-    print('[acqstore_server] Quit the status window to stop the API')
+    print('[acqstore_server] Quit the status window to stop the server')
 
     ui.run(**native_ui_run_kwargs(host=ui_host, port=ui_port))
 

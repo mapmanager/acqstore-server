@@ -49,8 +49,12 @@ def test_native_status_ui_source_targets_v2_via_controller() -> None:
     assert 'Server' in source
     assert 'Log' in source
     assert 'This process log' not in source
-    assert 'Free API port' in source
-    assert 'Start API (force)' in source
+    assert 'Free server port' in source
+    assert 'Start server' in source
+    assert 'Start server (force)' not in source
+    assert 'Start API' not in source
+    assert "'Quit'" not in source and '"Quit"' not in source
+    assert ".props('flat" not in source
     assert '_force_process_exit' in source
     assert 'set_enabled' in source
     assert '.tooltip(' in source
@@ -130,7 +134,7 @@ def test_main_native_starts_controller_and_ui_ports(monkeypatch, capsys) -> None
 
     output = capsys.readouterr().out
     assert 'status UI http://127.0.0.1:8766' in output
-    assert 'API http://127.0.0.1:8767' in output
+    assert 'server http://127.0.0.1:8767' in output
     assert 'demo http://127.0.0.1:8767/demo/v2/' in output
     assert starts == [{'host': '127.0.0.1', 'port': 8767}]
     assert run_kwargs and run_kwargs[0]['port'] == 8766

@@ -15,6 +15,7 @@ def test_format_status_line_healthy() -> None:
         healthy=True,
     )
     text = format_status_line(status, ui_bind='127.0.0.1:8766')
+    assert 'Server running' in text
     assert 'healthy' in text
     assert 'http://127.0.0.1:8767' in text
     assert 'UI 127.0.0.1:8766' in text
@@ -30,7 +31,7 @@ def test_format_status_line_stopped_with_error() -> None:
         error='port in use',
     )
     text = format_status_line(status, ui_bind='127.0.0.1:8766')
-    assert 'API stopped' in text
+    assert 'Server stopped' in text
     assert 'port in use' in text
 
 

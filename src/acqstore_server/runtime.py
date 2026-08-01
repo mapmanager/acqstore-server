@@ -212,7 +212,8 @@ class ServerController:
                 leftover = list_listening_pids(target)
                 raise PortReclaimError(
                     f'Port {target} is still busy after stop/reclaim '
-                    f'(pids={leftover}). Quit and relaunch, or use Start API (force).'
+                    f'(pids={leftover}). Quit and relaunch, or Free server port '
+                    f'then Start server.'
                 )
             return killed
         return reclaim_port(target)

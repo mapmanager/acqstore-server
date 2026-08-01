@@ -80,7 +80,7 @@ def test_stop_when_not_running_is_safe() -> None:
 
 
 def test_free_api_port_then_start_again() -> None:
-    """End-user flow: Free API port (stop+reclaim) then Start API must work."""
+    """End-user flow: Free server port (stop+reclaim) then Start server must work."""
     port = _free_port()
     controller = ServerController()
     controller.start(host='127.0.0.1', port=port)
