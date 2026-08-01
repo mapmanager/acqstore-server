@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 import urllib.error
 import urllib.request
@@ -32,6 +33,10 @@ def test_start_status_stop_round_trip() -> None:
         assert status.port == port
         with urllib.request.urlopen(status.health_url, timeout=2) as response:
             assert response.status == 200
+            health = json.loads(response.read().decode('utf-8'))
+        assert health['ok'] is True
+        assert health['apiVersion'] == 'v2'
+        assert health['serverVersion']
         probed = controller.status(probe_health=True)
         assert probed.healthy is True
     finally:

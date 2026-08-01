@@ -40,6 +40,12 @@ def test_openapi_keeps_v2_json_models_camel_case() -> None:
     assert 'apiVersion' in api_index
     assert 'api_version' not in api_index
 
+    health = schemas['HealthResponse']['properties']
+    assert 'apiVersion' in health
+    assert 'serverVersion' in health
+    assert 'api_version' not in health
+    assert 'server_version' not in health
+
     open_response = schemas['OpenResponse']['properties']
     assert 'sessionId' in open_response
     assert 'session_id' not in open_response

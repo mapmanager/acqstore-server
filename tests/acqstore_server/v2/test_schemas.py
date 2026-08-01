@@ -9,6 +9,7 @@ from acqstore_server.v2.schemas import (
     AxisResponse,
     ChannelResponse,
     HeaderResponse,
+    HealthResponse,
     OpenRequest,
     OpenResponse,
     PickAndOpenRequest,
@@ -132,3 +133,12 @@ def test_open_response_serializes_json_contract_in_camel_case() -> None:
     assert payload['channels'][0]['byteLength'] == 80
     assert payload['channels'][0]['dataUrl'].endswith('/channels/0/data')
     assert 'session_id' not in payload
+
+
+def test_health_response_uses_camel_case_aliases() -> None:
+    payload = HealthResponse(server_version='0.2.0').model_dump(by_alias=True)
+    assert payload == {
+        'ok': True,
+        'apiVersion': 'v2',
+        'serverVersion': '0.2.0',
+    }

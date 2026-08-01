@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
+from acqstore_server._version import __version__
+
 APP_NAME = 'acqstore_server'
-APP_VERSION = '0.1.0'
+# Alias of package ``__version__`` (sourced from pyproject / install metadata).
+APP_VERSION = __version__
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 8767
 # NiceGUI status window bind (API listens on DEFAULT_PORT via ServerController).

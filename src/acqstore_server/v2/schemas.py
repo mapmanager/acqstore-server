@@ -122,6 +122,17 @@ class ApiIndexResponse(ApiModel):
     links: dict[str, ApiLinkResponse]
 
 
+class HealthResponse(ApiModel):
+    """Lightweight health check for API v2 clients."""
+
+    ok: Literal[True] = True
+    api_version: Literal['v2'] = 'v2'
+    server_version: str = Field(
+        min_length=1,
+        description='Installed acqstore-server package version (pyproject / metadata).',
+    )
+
+
 class BinaryEncodingResponse(ApiModel):
     """Binary transport representation used for served planes."""
 

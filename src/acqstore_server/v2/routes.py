@@ -28,6 +28,7 @@ from acqstore_server.v2.schemas import (
     DeleteSessionResponse,
     ErrorResponse,
     HeaderResponse,
+    HealthResponse,
     OpenRequest,
     OpenResponse,
     PickAndOpenRequest,
@@ -38,6 +39,7 @@ from acqstore_server.v2.schemas import (
     SessionResponse,
     SourceResponse,
 )
+from acqstore_server._version import __version__
 from acqstore_server.v2.session_store import SessionBuffers, SessionStore
 
 PickFileFn = Callable[[Sequence[str] | None], str | None]
@@ -344,11 +346,15 @@ def create_router(
 
     @router.get(
         '/health',
+        response_model=HealthResponse,
         summary='Check API v2 health',
-        description='Return a lightweight success response without opening a file.',
+        description=(
+            'Return a lightweight success response without opening a file. '
+            'Includes apiVersion (contract) and serverVersion (package).'
+        ),
     )
-    def health() -> dict[str, object]:
-        return {'ok': True, 'apiVersion': 'v2'}
+    def health() -> HealthResponse:
+        return HealthResponse(server_version=__version__)
 
     @router.get(
         '/capabilities',

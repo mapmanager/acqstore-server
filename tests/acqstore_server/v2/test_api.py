@@ -228,6 +228,19 @@ def test_v2_capabilities_are_sourced_from_acqstore_public_api() -> None:
     assert payload['sessionTtlSeconds'] == 42.0
 
 
+def test_v2_health_reports_api_and_server_version() -> None:
+    from acqstore_server import __version__
+
+    response = TestClient(create_app()).get('/api/v2/health')
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        'ok': True,
+        'apiVersion': 'v2',
+        'serverVersion': __version__,
+    }
+
+
 def test_v2_open_logs_human_readable_acquisition_summary(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

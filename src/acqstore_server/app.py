@@ -425,7 +425,13 @@ def main_native() -> None:
 
 
 def main() -> None:
-    """Entry: native status UI when ``ACQSTORE_SERVER_NATIVE=1``, else uvicorn."""
+    """Entry: native status UI when ``ACQSTORE_SERVER_NATIVE=1``, else uvicorn.
+
+    ``--version`` / ``-V`` prints the package version and exits.
+    """
+    if len(sys.argv) > 1 and sys.argv[1] in {'--version', '-V'}:
+        print(f'acqstore-server {APP_VERSION}')
+        return
     if _env_true('ACQSTORE_SERVER_NATIVE'):
         main_native()
     else:
