@@ -17,7 +17,7 @@ Do not begin with the detailed reference documents. Use them only when the roadm
 - [`client-roadmap.md`](client-roadmap.md) — the onboarding path for a new client
 - [`reference/`](reference/README.md) — detailed API, JavaScript, error, testing, and architecture reference
 - [`reference-clients/`](reference-clients/) — non-shipped HTML reference clients (for maintainers comparing demo behavior)
-- [`v1/`](v1/README.md) — archived API v1 documentation for existing integrations
+- [`v1/`](v1/README.md) — **historical** API v1 notes only (v1 is removed from the product)
 
 ## Running server
 
@@ -26,7 +26,7 @@ External JavaScript developers normally receive and run **AcqStore Server.app**.
 Python developers working from this repository need a sibling `../acqstore` checkout (see the root README), then:
 
 ```bash
-uv sync --group dev
+uv sync
 uv run python -m acqstore_server
 ```
 
@@ -44,4 +44,4 @@ http://127.0.0.1:8767/docs
 http://127.0.0.1:8767/openapi.json
 ```
 
-API v2 is the active client-development target. API v1 remains available for existing clients.
+API v2 is the only client-development target. API v1 has been removed; see [`v1/`](v1/README.md) for historical notes only.

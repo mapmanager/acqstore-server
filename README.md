@@ -77,7 +77,7 @@ export ACQSTORE_SERVER_PORT=8767
 
 ```bash
 uv lock --check
-uv sync --frozen --group dev
+uv sync --frozen --group dev --group desktop
 uv run --no-sync ruff check .
 uv run --no-sync pytest -ra --cov=acqstore_server
 ```
@@ -90,7 +90,7 @@ Public docs site: [https://mapmanager.github.io/acqstore-server/](https://mapman
 
 The Docs GitHub Actions workflow builds MkDocs on pull requests and deploys to GitHub Pages from `main` (and manual dispatch). See [`CHANGELOG.md`](CHANGELOG.md) for recent product and docs changes.
 
-MkDocs source is under [`docs/`](docs/) (end-user GUI, LLM/JS client path, optional reference detail, and a small mkdocstrings API section). Working notes may still live under `docs-dev/` for maintainers; the published site does not link there.
+MkDocs source is under [`docs/`](docs/) (end-user GUI, LLM/JS client path, Python control for embedders, and optional reference detail). Working notes may still live under `docs-dev/` for maintainers; the published site does not link there.
 
 Local preview and strict build:
 

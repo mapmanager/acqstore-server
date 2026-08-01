@@ -49,6 +49,6 @@ Contrast (per-channel LUT + min/max range), per-pane **Composite** (LUT-colorize
 
 ## Compatibility
 
-The v2 demo is independent of the frozen v1 demo at `/demo/`. It contains no application-specific channel roles and is not tied to an external calcium client.
+The v2 demo at `/demo/v2/` is the only built-in demo (legacy `/demo/` redirects here). It contains no application-specific channel roles and is not tied to an external calcium client.
 
 Keep this demo synchronized with the API reference, JavaScript guide, and OpenAPI contract tests.

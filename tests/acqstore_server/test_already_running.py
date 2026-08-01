@@ -2,10 +2,44 @@
 
 from __future__ import annotations
 
+import builtins
+import sys
+
 import pytest
 
 import acqstore_server.app as app_module
 from acqstore_server.runtime import looks_like_running_desktop
+
+
+def test_main_native_exits_when_nicegui_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Desktop entry documents the optional [desktop] install when NiceGUI is absent."""
+    real_import = builtins.__import__
+
+    def blocked_import(
+        name: str,
+        globals: object = None,
+        locals: object = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> object:
+        if name == 'nicegui' or name.startswith('nicegui.'):
+            raise ImportError("No module named 'nicegui'")
+        return real_import(name, globals, locals, fromlist, level)
+
+    for key in list(sys.modules):
+        if key == 'nicegui' or key.startswith('nicegui.'):
+            monkeypatch.delitem(sys.modules, key, raising=False)
+
+    monkeypatch.setattr(builtins, '__import__', blocked_import)
+
+    with pytest.raises(SystemExit) as exc_info:
+        app_module.main_native()
+
+    message = str(exc_info.value)
+    assert 'NiceGUI is required' in message
+    assert 'acqstore-server[desktop]' in message
 
 
 def test_looks_like_running_desktop_when_both_ports_busy(

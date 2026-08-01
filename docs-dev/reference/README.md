@@ -20,4 +20,4 @@ New client developers should begin with the root [client roadmap](../client-road
 - [Testing](testing.md)
 - [Client handoff checklist](client-handoff.md)
 
-API v2 is the active development target. Archived API v1 documentation remains under [`../v1/`](../v1/README.md).
+API v2 is the only development target. Historical API v1 notes remain under [`../v1/`](../v1/README.md) (v1 is not available at runtime).

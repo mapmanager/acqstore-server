@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
+import textwrap
 
 import acqstore_server
 from acqstore_server import (
@@ -37,16 +39,24 @@ def test_public_exports_match_dunder_all() -> None:
     _ = PortReclaimError
 
 
-def test_importing_package_does_not_load_nicegui() -> None:
-    """Core embedder path must not require NiceGUI."""
-    # Fresh check: if already imported by other tests, skip the negative assert.
-    if 'nicegui' in sys.modules:
-        # Still verify controller import path is independent.
-        from acqstore_server.runtime import ServerController as SC
+def test_core_package_import_does_not_load_nicegui_in_subprocess() -> None:
+    """Fresh interpreter: import path must not pull NiceGUI even if installed."""
+    script = textwrap.dedent(
+        """
+        import sys
+        import acqstore_server
+        from acqstore_server import ServerController
 
-        assert SC is ServerController
-        return
-    import importlib
-
-    importlib.reload(acqstore_server)
-    assert 'nicegui' not in sys.modules
+        assert "nicegui" not in sys.modules, sorted(sys.modules)
+        assert ServerController.__name__ == "ServerController"
+        print("ok")
+        """
+    )
+    result = subprocess.run(
+        [sys.executable, '-c', script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    assert 'ok' in result.stdout

@@ -6,7 +6,7 @@
 # build-only (strict validation); pushes to main and manual dispatch deploy
 # to https://mapmanager.github.io/acqstore-server/
 #
-# The docs group includes mkdocstrings, so this workflow still checks out the
+# The docs group may pull mkdocstrings; this workflow still checks out the
 # sibling ``acqstore`` editable path dependency declared in pyproject.toml.
 
 name: Docs
@@ -17,7 +17,6 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
-      # mkdocstrings pages are generated from the v2 source modules.
       - 'src/**'
       - 'mkdocs.yml'
       - 'pyproject.toml'
