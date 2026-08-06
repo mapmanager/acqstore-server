@@ -35,8 +35,8 @@ def test_start_status_stop_round_trip() -> None:
             assert response.status == 200
             health = json.loads(response.read().decode('utf-8'))
         assert health['ok'] is True
-        assert health['apiVersion'] == 'v2'
-        assert health['serverVersion']
+        assert health['api_version'] == 'v2'
+        assert health['server_version']
         probed = controller.status(probe_health=True)
         assert probed.healthy is True
     finally:

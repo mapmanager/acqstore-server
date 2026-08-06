@@ -450,4 +450,4 @@ def _probe_health(base_url: str) -> bool:
             payload = json.loads(response.read().decode('utf-8'))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
         return False
-    return payload.get('ok') is True and payload.get('apiVersion') == 'v2'
+    return payload.get('ok') is True and payload.get('api_version') == 'v2'

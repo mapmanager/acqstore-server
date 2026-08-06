@@ -23,10 +23,12 @@ const API = `${SERVER}/api/v2`;
 const health = await requestJson(`${API}/health`);
 const capabilities = await requestJson(`${API}/capabilities`);
 
-console.log(health.apiVersion);                    // "v2"
+console.log(health.api_version);                   // "v2"
 console.log(capabilities.allowedImportExtensions); // runtime AcqStore formats
 console.log(capabilities.binary.encoding);         // "raw-f32-le"
 ```
+
+`/health` uses snake_case (`api_version`). Other v2 JSON (including `/capabilities`) remains camelCase.
 
 Do not hard-code the supported extension list. It is derived from the AcqStore installation used by the running server.
 

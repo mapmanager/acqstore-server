@@ -40,17 +40,18 @@ def test_openapi_keeps_v2_json_models_camel_case() -> None:
     assert 'apiVersion' in api_index
     assert 'api_version' not in api_index
 
+    # Health is the intentional snake_case exception to the camelCase v2 wire.
     health = schemas['HealthResponse']['properties']
-    assert 'apiVersion' in health
-    assert 'serverVersion' in health
-    assert 'acqstoreVersion' in health
-    assert 'buildTimestampEastern' in health
-    assert 'gitCommit' in health
-    assert 'api_version' not in health
-    assert 'server_version' not in health
-    assert 'acqstore_version' not in health
-    assert 'build_timestamp_eastern' not in health
-    assert 'git_commit' not in health
+    assert 'api_version' in health
+    assert 'server_version' in health
+    assert 'acqstore_version' in health
+    assert 'build_timestamp_eastern' in health
+    assert 'git_commit' in health
+    assert 'apiVersion' not in health
+    assert 'serverVersion' not in health
+    assert 'acqstoreVersion' not in health
+    assert 'buildTimestampEastern' not in health
+    assert 'gitCommit' not in health
 
     open_response = schemas['OpenResponse']['properties']
     assert 'sessionId' in open_response

@@ -49,12 +49,14 @@ Example response:
 ```json
 {
   "ok": true,
-  "apiVersion": "v2",
-  "serverVersion": "0.2.0"
+  "api_version": "v2",
+  "server_version": "0.2.0"
 }
 ```
 
-`apiVersion` is the HTTP contract (`v2`). `serverVersion` is the installed AcqStore Server package version. Use this as the lightest check that the local server and v2 router are available.
+`api_version` is the HTTP contract (`v2`). `server_version` is the installed AcqStore Server package version. Use this as the lightest check that the local server and v2 router are available.
+
+Health JSON uses **snake_case** field names. Other API v2 JSON payloads remain **camelCase**.
 
 ### `GET /api/v2/capabilities`
 

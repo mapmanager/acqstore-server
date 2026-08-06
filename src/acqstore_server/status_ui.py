@@ -99,7 +99,10 @@ def build_status_page(
 
     ui.colors(primary='#38bdf8')
 
-    with ui.column().classes('w-full h-full p-3 gap-2'):
+    with ui.column().classes('w-full p-3 gap-2').style(
+        'height: calc(100vh - 40px); overflow: hidden; '
+        'display: flex; flex-direction: column; box-sizing: border-box;'
+    ):
         with ui.row().classes('w-full items-center gap-2 flex-wrap'):
             ui.label(APP_NAME).classes('text-h6 text-primary')
             ui.label('|').classes('text-grey-6')
@@ -220,24 +223,11 @@ def build_status_page(
 
         # --- Clients (primary) ---
         # ui.label('Clients').classes('text-subtitle2 text-grey-5')
-        with ui.row().classes('gap-2 flex-wrap'):
-            open_demo_btn = ui.button('Open demo', on_click=_open_demo).props(
-                'color=primary'
-            )
-            open_demo_btn.tooltip('Open the browser demo for this server')
-
-            # Opens FastAPI /docs (OpenAPI) on the server port.
-            api_docs_btn = ui.button('API docs', on_click=_open_docs).props('outline')
-            api_docs_btn.tooltip('Open interactive HTTP API documentation')
-
-            health_btn = ui.button('Check health', on_click=_show_health).props(
-                'outline'
-            )
-            health_btn.tooltip('Ask the server if it is responding')
-
         # --- Server (ops) — controls the :8767 listener, not the NiceGUI UI port ---
         # ui.label('Server').classes('text-subtitle2 text-grey-5')
-        with ui.row().classes('gap-2 flex-wrap'):
+
+        # Primary actions (most users).
+        with ui.row().classes('w-full gap-2 flex-wrap'):
             start_btn = ui.button(
                 'Start server',
                 on_click=_start_server,
@@ -247,19 +237,41 @@ def build_status_page(
             stop_btn = ui.button('Stop server', on_click=_stop_server).props('outline')
             stop_btn.tooltip('Stop the local server (demo and clients will disconnect)')
 
-            list_btn = ui.button(
-                'Who uses server port?',
-                on_click=_list_server_listeners,
-            ).props('outline')
-            list_btn.tooltip('Show which process is holding the server port')
-
-            free_btn = ui.button('Free server port', on_click=_free_server_port).props(
-                'outline color=negative'
+            health_btn = ui.button('Check health', on_click=_show_health).props(
+                'outline'
             )
-            free_btn.tooltip('Stop our server and clear anything blocking the port')
+            health_btn.tooltip('Ask the server if it is responding')
 
-            open_log_btn = ui.button('Open log file', on_click=_open_log).props('outline')
-            open_log_btn.tooltip('Open the log file in your default viewer')
+            open_demo_btn = ui.button('Open demo', on_click=_open_demo).props(
+                'color=primary'
+            )
+            open_demo_btn.tooltip('Open the browser demo for this server')
+
+        # Secondary / ops tools (collapsed by default).
+        with ui.expansion('Diagnostics', value=False).classes('w-full'):
+            with ui.row().classes('w-full gap-2 flex-wrap'):
+                # Opens FastAPI /docs (OpenAPI) on the server port.
+                api_docs_btn = ui.button('API docs', on_click=_open_docs).props('outline')
+                api_docs_btn.tooltip('Open interactive HTTP API documentation')
+
+                list_btn = ui.button(
+                    'Who uses server port?',
+                    on_click=_list_server_listeners,
+                ).props('outline')
+                list_btn.tooltip('Show which process is holding the server port')
+
+                # warning = higher contrast on dark than negative/red.
+                free_btn = ui.button(
+                    'Free server port',
+                    on_click=_free_server_port,
+                ).props('outline color=warning')
+                free_btn.tooltip('Stop our server and clear anything blocking the port')
+
+                open_log_btn = ui.button(
+                    'Open log file',
+                    on_click=_open_log,
+                ).props('outline')
+                open_log_btn.tooltip('Open the log file in your default viewer')
 
         def _sync_controls() -> None:
             """Enable/disable actions from current server running state."""
@@ -279,8 +291,10 @@ def build_status_page(
         _sync_controls()
 
         # In-memory process buffer via get_ui_log_text(); see module docstring.
-        ui.label('Log').classes('text-caption text-grey-5')
-        with ui.scroll_area().classes('w-full border rounded').style('height: 280px'):
+        # ui.label('Log').classes('text-caption text-grey-5')
+        with ui.scroll_area().classes('w-full border rounded min-h-0').style(
+            'flex: 1 1 auto; min-height: 120px;'
+        ):
             log_view = (
                 ui.label(get_ui_log_text())
                 .classes('w-full font-mono whitespace-pre-wrap text-xs select-text')

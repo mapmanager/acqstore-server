@@ -135,16 +135,18 @@ def test_open_response_serializes_json_contract_in_camel_case() -> None:
     assert 'session_id' not in payload
 
 
-def test_health_response_uses_camel_case_aliases() -> None:
-    payload = HealthResponse(server_version='0.2.0').model_dump(by_alias=True)
+def test_health_response_uses_snake_case_wire_keys() -> None:
+    payload = HealthResponse(server_version='0.2.0').model_dump(mode='json')
     assert payload == {
         'ok': True,
-        'apiVersion': 'v2',
-        'serverVersion': '0.2.0',
-        'acqstoreVersion': None,
-        'buildTimestampEastern': None,
-        'gitCommit': None,
+        'api_version': 'v2',
+        'server_version': '0.2.0',
+        'acqstore_version': None,
+        'build_timestamp_eastern': None,
+        'git_commit': None,
     }
+    # Health is snake_case even if by_alias is requested (no camel aliases).
+    assert HealthResponse(server_version='0.2.0').model_dump(by_alias=True, mode='json') == payload
 
 
 def test_health_response_includes_pack_identity_fields() -> None:
@@ -153,7 +155,7 @@ def test_health_response_includes_pack_identity_fields() -> None:
         acqstore_version='0.1.0',
         build_timestamp_eastern='2026-08-05 21:41:00 EDT (Baltimore)',
         git_commit='abc1234',
-    ).model_dump(by_alias=True)
-    assert payload['acqstoreVersion'] == '0.1.0'
-    assert payload['buildTimestampEastern'] == '2026-08-05 21:41:00 EDT (Baltimore)'
-    assert payload['gitCommit'] == 'abc1234'
+    ).model_dump(mode='json')
+    assert payload['acqstore_version'] == '0.1.0'
+    assert payload['build_timestamp_eastern'] == '2026-08-05 21:41:00 EDT (Baltimore)'
+    assert payload['git_commit'] == 'abc1234'

@@ -122,8 +122,17 @@ class ApiIndexResponse(ApiModel):
     links: dict[str, ApiLinkResponse]
 
 
-class HealthResponse(ApiModel):
-    """Lightweight health check for API v2 clients."""
+class HealthResponse(BaseModel):
+    """Lightweight health check for API v2 clients.
+
+    Wire JSON for this endpoint uses **snake_case** field names. Other API v2
+    payloads continue to use camelCase via :class:`ApiModel`.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra='forbid',
+    )
 
     ok: Literal[True] = True
     api_version: Literal['v2'] = 'v2'

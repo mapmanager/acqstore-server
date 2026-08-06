@@ -350,8 +350,9 @@ def create_router(
         summary='Check API v2 health',
         description=(
             'Return a lightweight success response without opening a file. '
-            'Includes apiVersion, serverVersion, and optional pack-time '
-            'identity (acqstoreVersion, buildTimestampEastern, gitCommit).'
+            'Includes api_version, server_version, and optional pack-time '
+            'identity (acqstore_version, build_timestamp_eastern, git_commit). '
+            'Health JSON uses snake_case; other v2 payloads remain camelCase.'
         ),
     )
     def health() -> HealthResponse:

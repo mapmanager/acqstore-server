@@ -236,12 +236,15 @@ def test_v2_health_reports_api_and_server_version() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload['ok'] is True
-    assert payload['apiVersion'] == 'v2'
-    assert payload['serverVersion'] == __version__
-    assert payload['acqstoreVersion'] == get_acqstore_version()
+    assert payload['api_version'] == 'v2'
+    assert payload['server_version'] == __version__
+    assert payload['acqstore_version'] == get_acqstore_version()
     # Pack-time fields are null outside a stamped/frozen build.
-    assert payload['buildTimestampEastern'] is None
-    assert payload['gitCommit'] is None
+    assert payload['build_timestamp_eastern'] is None
+    assert payload['git_commit'] is None
+    # Other v2 payloads remain camelCase (health is the snake_case exception).
+    assert 'apiVersion' not in payload
+    assert 'serverVersion' not in payload
 
 
 def test_v2_open_logs_human_readable_acquisition_summary(

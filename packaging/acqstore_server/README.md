@@ -45,10 +45,10 @@ repository; it does not install AcqStore from PyPI.
 
 `build_app.sh` runs `build_info.sh` before packing. That stamps a transient
 `src/acqstore_server/_build_info.py` (gitignored, deleted after the pack) so
-the frozen app reports a real `serverVersion` instead of `0.0.0+unknown`. The
+the frozen app reports a real `server_version` instead of `0.0.0+unknown`. The
 NiceGUI header still shows **only** `v{version}`; `/api/v2/health` also
-exposes `acqstoreVersion`, `buildTimestampEastern` (US Eastern / Baltimore),
-and `gitCommit`.
+exposes `acqstore_version`, `build_timestamp_eastern` (US Eastern / Baltimore),
+and `git_commit` (snake_case; other v2 JSON remains camelCase).
 
 ## Local build only (unsigned)
 
