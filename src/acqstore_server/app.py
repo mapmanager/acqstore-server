@@ -290,6 +290,10 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
     The status UI no longer serves API binary planes; ``gzip_middleware_factory``
     remains disabled so a future co-mount cannot regress plane latency.
 
+    Window geometry (``x`` / ``y`` / ``width`` / ``height``) and
+    ``confirm_close`` are set via :func:`configure_native_status_window` on
+    ``app.native.window_args`` before ``ui.run`` — not via ``window_size``.
+
     Args:
         host: Bind host for ``ui.run`` (status UI only).
         port: Bind port for ``ui.run`` (status UI only; default ``8766``).
@@ -304,7 +308,6 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
         'native': True,
         'reload': False,
         'dark': True,
-        'window_size': (640, 720),
         'show': True,
         'storage_secret': 'acqstore-server-local',
         # API docs live on the ServerController port, not the status UI.
@@ -312,6 +315,43 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
         'show_welcome_message': False,
         'gzip_middleware_factory': None,
     }
+
+
+# Hardcoded initial native status-window geometry (pywebview create_window).
+_NATIVE_WINDOW_X = 80
+_NATIVE_WINDOW_Y = 80
+_NATIVE_WINDOW_WIDTH = 640
+_NATIVE_WINDOW_HEIGHT = 480
+
+
+def configure_native_status_window(nicegui_app: Any | None = None) -> None:
+    """Set pywebview window geometry / confirm_close before ``ui.run``.
+
+    Populates ``app.native.window_args`` so NiceGUI passes them to
+    ``webview.create_window``. Call from the parent process before ``ui.run``,
+    and again from ``__mp_main__`` on macOS spawn (configure only — never
+    ``ui.run`` from the child).
+
+    Args:
+        nicegui_app: Optional NiceGUI ``app`` object. When ``None``, imports
+            ``nicegui.app``.
+
+    Returns:
+        None.
+    """
+    if nicegui_app is None:
+        from nicegui import app as nicegui_app  # noqa: PLC0415
+    nicegui_app.native.window_args.update({
+        'x': _NATIVE_WINDOW_X,
+        'y': _NATIVE_WINDOW_Y,
+        'width': _NATIVE_WINDOW_WIDTH,
+        'height': _NATIVE_WINDOW_HEIGHT,
+        'confirm_close': True,
+    })
+    logger.info(
+        'native status window_args: %s',
+        nicegui_app.native.window_args,
+    )
 
 
 def main_native() -> None:
@@ -428,6 +468,7 @@ def main_native() -> None:
     print(f'[acqstore_server] log {log_file_path()}')
     print('[acqstore_server] Quit the status window to stop the server')
 
+    configure_native_status_window(nicegui_app)
     ui.run(**native_ui_run_kwargs(host=ui_host, port=ui_port))
 
 

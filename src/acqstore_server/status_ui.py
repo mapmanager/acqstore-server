@@ -219,7 +219,7 @@ def build_status_page(
                 logger.warning('Failed to open log %s: %s', log_path, exc)
 
         # --- Clients (primary) ---
-        ui.label('Clients').classes('text-subtitle2 text-grey-5')
+        # ui.label('Clients').classes('text-subtitle2 text-grey-5')
         with ui.row().classes('gap-2 flex-wrap'):
             open_demo_btn = ui.button('Open demo', on_click=_open_demo).props(
                 'color=primary'
@@ -236,7 +236,7 @@ def build_status_page(
             health_btn.tooltip('Ask the server if it is responding')
 
         # --- Server (ops) — controls the :8767 listener, not the NiceGUI UI port ---
-        ui.label('Server').classes('text-subtitle2 text-grey-5')
+        # ui.label('Server').classes('text-subtitle2 text-grey-5')
         with ui.row().classes('gap-2 flex-wrap'):
             start_btn = ui.button(
                 'Start server',

@@ -96,6 +96,9 @@ def test_main_native_starts_controller_and_ui_ports(monkeypatch, capsys) -> None
             )
 
     class FakeNiceguiApp:
+        def __init__(self) -> None:
+            self.native = SimpleNamespace(window_args={})
+
         def on_shutdown(self, fn: object) -> None:
             shutdown_hooks.append(fn)
 
