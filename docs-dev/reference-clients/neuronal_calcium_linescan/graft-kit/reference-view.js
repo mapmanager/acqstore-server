@@ -58,7 +58,7 @@ function injectCssOnce() {
 function hostHtml() {
   return `
 <section class="card collapsible collapsed acqstore-ref-root" id="acqstoreReferenceCard">
-  <h2>Reference Images</h2>
+  <h2 id="acqstoreRefCardTitle">Reference Images · No Reference Images</h2>
   <div class="acqstore-ref-controls section-heading">
     <label id="referenceCompositeControl" class="toggle" hidden>
       <input id="referenceComposite" type="checkbox">
@@ -78,9 +78,15 @@ function hostHtml() {
   <p id="acqstoreRefEmpty" class="meta" hidden>No reference image loaded.</p>
 </section>
 <div id="acqstoreRefRangePopover" class="range-popover" hidden role="dialog" aria-label="Reference display range">
-  <h2 id="acqstoreRefRangeTitle">Display range</h2>
+  <div class="range-title-row">
+    <h2 id="acqstoreRefRangeTitle">Display range</h2>
+    <label class="toggle">
+      <input id="acqstoreRefRangeLog" type="checkbox" checked>
+      Log
+    </label>
+  </div>
   <div class="histogram-wrap">
-    <canvas id="acqstoreRefRangeHistogram" width="300" height="100"></canvas>
+    <canvas id="acqstoreRefRangeHistogram" width="300" height="75"></canvas>
   </div>
   <div class="range-fields">
     <label>Min <input id="acqstoreRefRangeMin" type="number" step="any"></label>
@@ -93,6 +99,8 @@ function hostHtml() {
   <div id="sourceContrast" class="card contrast-panel" hidden></div>
   <label id="sourceCompositeControl" class="toggle" hidden><input id="sourceComposite" type="checkbox"></label>
   <label id="sourceAxesControl" class="toggle" hidden><input id="sourceAxes" type="checkbox"></label>
+  <span id="sourcePlaneMeta" class="plane-meta" hidden></span>
+  <span id="referencePlaneMeta" class="plane-meta" hidden></span>
 </div>`;
 }
 
@@ -146,6 +154,72 @@ function groupViews(group) {
     .filter(view => view.group === group)
     .slice()
     .sort((a, b) => a.channelIndex - b.channelIndex);
+}
+function formatStepValue(value) {
+  if (!Number.isFinite(value)) return '—';
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-6 || magnitude >= 1e6)) {
+    return value.toExponential(6);
+  }
+  return String(Number(value.toPrecision(8)));
+}
+/** Compact unit label for the plane-meta / disclosure title row. */
+function metaUnitLabel(unit) {
+  const compact = String(unit || '').trim().toLowerCase();
+  if (['s', 'sec', 'second', 'seconds'].includes(compact)) return 's';
+  if (['ms', 'millisecond', 'milliseconds'].includes(compact)) return 'ms';
+  if (['um', 'µm', 'micrometer', 'micrometers', 'micrometre', 'micrometres'].includes(compact)) {
+    return 'µm';
+  }
+  return String(unit || '').trim();
+}
+/**
+ * Compact plane summary for disclosure title (from archive monolith).
+ * Example: "512×512 px | 0.29075114×0.29075114 µm | Y / X"
+ */
+function formatPlaneMetaText(view) {
+  const axes = view?.axes || {};
+  const dim0 = axes.x;
+  const dim1 = axes.y;
+  const size0 = Number(dim0?.size);
+  const size1 = Number(dim1?.size);
+  const pixels = (size0 > 0 && size1 > 0)
+    ? `${size0}×${size1} px`
+    : '—';
+
+  const step0 = Number(dim0?.step);
+  const step1 = Number(dim1?.step);
+  const unit0 = metaUnitLabel(dim0?.unit);
+  const unit1 = metaUnitLabel(dim1?.unit);
+  let physical = '—';
+  if (Number.isFinite(step0) || Number.isFinite(step1)) {
+    const s0 = Number.isFinite(step0) ? formatStepValue(step0) : '—';
+    const s1 = Number.isFinite(step1) ? formatStepValue(step1) : '—';
+    if (unit0 && unit1 && unit0 === unit1 && Number.isFinite(step0) && Number.isFinite(step1)) {
+      physical = `${s0}×${s1} ${unit0}`;
+    } else {
+      const p0 = Number.isFinite(step0) ? (unit0 ? `${s0} ${unit0}` : s0) : '—';
+      const p1 = Number.isFinite(step1) ? (unit1 ? `${s1} ${unit1}` : s1) : '—';
+      physical = `${p0} × ${p1}`;
+    }
+  }
+
+  const name0 = String(dim0?.name || '').trim();
+  const name1 = String(dim1?.name || '').trim();
+  const labels = (name0 || name1) ? `${name0 || '—'} / ${name1 || '—'}` : '—';
+  return `${pixels} | ${physical} | ${labels}`;
+}
+/** Disclosure h2 text — visible when card is collapsed (host CSS). */
+function updateReferenceCardTitle() {
+  const titleEl = $('acqstoreRefCardTitle');
+  if (!titleEl) return;
+  const views = groupViews('reference');
+  if (!views.length) {
+    titleEl.textContent = 'Reference Images · No Reference Images';
+    return;
+  }
+  // Informative plane summary unchanged; label prefix identifies the disclosure.
+  titleEl.textContent = 'Reference Images · ' + formatPlaneMetaText(views[0]);
 }
 function compositeEnabled(group) {
   return group === 'source' ? sourceComposite.checked : referenceComposite.checked;
@@ -319,14 +393,24 @@ function drawAxisLabels(ctx, state) {
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (const value of ticks.major) {
+    const xMajor = ticks.major.filter(value => {
       const x = xAt(value);
-      if (x < left - 0.5 || x > right + 0.5) continue;
-      const label = formatAxisTick(value, ticks.majorStep, xMeta.unit);
-      const labelX = clamp(x, left + 2, right - 2);
-      ctx.fillText(label, labelX, bottom + 7);
-    }
+      return x >= left - 0.5 && x <= right + 0.5;
+    });
     const unit = axisUnitLabel(xMeta.unit);
+    // Leave room on the right when a separate unit label is drawn (µm).
+    const labelRight = unit ? right - 14 : right - 2;
+    xMajor.forEach((value, index) => {
+      const x = xAt(value);
+      // Time units (s/ms) only on the last tick — avoids "1.2s 2.4s …" crowding.
+      const label = formatAxisTick(
+        value,
+        ticks.majorStep,
+        index === xMajor.length - 1 ? xMeta.unit : '',
+      );
+      const labelX = clamp(x, left + 2, labelRight);
+      ctx.fillText(label, labelX, bottom + 7);
+    });
     if (unit) {
       ctx.textAlign = 'right';
       ctx.fillText(unit, right, bottom + 7);
@@ -358,6 +442,10 @@ function drawAxisLabels(ctx, state) {
     }
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
     const unit = axisUnitLabel(yMeta.unit);
+    const yMajor = ticks.major.filter(value => {
+      const y = yAt(value);
+      return y >= top - 0.5 && y <= bottom + 0.5;
+    });
     if (unit) {
       // Unit sits in the left gutter, above the tick column (outside pixels).
       ctx.textBaseline = 'top';
@@ -366,11 +454,19 @@ function drawAxisLabels(ctx, state) {
     }
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
-    for (const value of ticks.major) {
+    yMajor.forEach((value, index) => {
       const y = yAt(value);
-      if (y < top - 0.5 || y > bottom + 0.5) continue;
-      ctx.fillText(formatAxisTick(value, ticks.majorStep, yMeta.unit), left - 8, y);
-    }
+      // Skip top tick label when a gutter unit occupies that corner (µm overlap).
+      if (unit && index === yMajor.length - 1 && Math.abs(y - top) < 12) return;
+      // Time units only on the bottom-most visible tick (value 0 end).
+      const isBottomTick = index === 0;
+      const label = formatAxisTick(
+        value,
+        ticks.majorStep,
+        (!unit && isBottomTick) ? yMeta.unit : '',
+      );
+      ctx.fillText(label, left - 8, y);
+    });
   }
   ctx.restore();
 }
@@ -1301,6 +1397,9 @@ function createContrastController(elements, redrawView) {
   function selectedView() {
     return selectedId ? views.get(selectedId) : null;
   }
+  function logScaleEnabled() {
+    return Boolean(elements.log?.checked);
+  }
   function numberText(value) {
     const magnitude = Math.abs(value);
     if ((magnitude !== 0 && magnitude < 0.001) || magnitude >= 100000) {
@@ -1344,14 +1443,19 @@ function createContrastController(elements, redrawView) {
     const width = canvas.width, height = canvas.height;
     const left = 6, right = width - 6, top = 6, bottom = height - 8;
     const maxCount = Math.max(1, ...histogram.bins);
+    const useLog = logScaleEnabled();
+    const maxFrac = useLog ? Math.log1p(maxCount) : maxCount;
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#020617';
     ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = '#64748b';
+    const binCount = histogram.bins.length;
+    // Mid-high LUT sample (archive monolith): t=0.75 — not near-white at t=1.
+    const [r, g, b] = sampleLutRgb(view.display.lut, 0.75);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
     histogram.bins.forEach((count, index) => {
-      const x0 = left + index / histogram.bins.length * (right - left);
-      const x1 = left + (index + 1) / histogram.bins.length * (right - left);
-      const frac = Math.log1p(count) / Math.log1p(maxCount);
+      const x0 = left + index / binCount * (right - left);
+      const x1 = left + (index + 1) / binCount * (right - left);
+      const frac = (useLog ? Math.log1p(count) : count) / maxFrac;
       const barHeight = frac * (bottom - top);
       ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
     });
@@ -1451,6 +1555,7 @@ function createContrastController(elements, redrawView) {
     lutSelect.addEventListener('change', () => {
       view.display.lut = lutSelect.value;
       redrawView(view, {resetView:false});
+      if (!elements.popover.hidden && selectedId === view.id) drawHistogram();
     });
     const rangeButton = document.createElement('button');
     rangeButton.type = 'button';
@@ -1476,6 +1581,9 @@ function createContrastController(elements, redrawView) {
     syncPopoverFields();
     redrawView(view, {resetView:false});
     drawHistogram();
+  });
+  elements.log?.addEventListener('change', () => {
+    if (!elements.popover.hidden) drawHistogram();
   });
   elements.histogram.addEventListener('pointerdown', event => {
     const view = selectedView();
@@ -1649,6 +1757,7 @@ async function setFromOpenPayload(payload) {
   state.activeViews = views;
   updateCompositeControls();
   updateAxesControls();
+  updateReferenceCardTitle();
   contrastController.setViews(views);
   mountGroupLayout('reference');
   redrawGroupDisplay('reference', {resetView: true});
@@ -1661,6 +1770,7 @@ function clear() {
   destroyActiveViews();
   contrastController?.reset?.();
   referencesEl?.replaceChildren();
+  updateReferenceCardTitle();
   if (referenceEmptyEl) {
     referenceEmptyEl.hidden = false;
     referenceEmptyEl.textContent = 'No reference image loaded.';
@@ -1698,6 +1808,7 @@ function mount(hostEl, opts={}) {
       referencePanel: $('referenceContrast'),
       popover: $('acqstoreRefRangePopover'),
       title: $('acqstoreRefRangeTitle'),
+      log: $('acqstoreRefRangeLog'),
       histogram: $('acqstoreRefRangeHistogram'),
       min: $('acqstoreRefRangeMin'),
       max: $('acqstoreRefRangeMax'),

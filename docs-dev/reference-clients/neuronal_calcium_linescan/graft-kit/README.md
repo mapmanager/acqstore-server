@@ -53,10 +53,13 @@ Reuse host classes (`card`, `ok`, `mini`) — do not add unscoped card CSS.
 ## Reference viewer layout (disclosure only)
 
 ```text
-┌─ ▸ Reference Images ────┐   collapsed (default if no reference)
+┌─ ▸ No Reference Images ─┐   collapsed, no reference loaded
 └─────────────────────────┘
 
-┌─ ▾ Reference Images ──────────────────────────┐  expanded after open
+┌─ ▸ 512×512 px | 0.29×0.29 µm | Y / X ─┐  collapsed title = plane meta
+└──────────────────────────────────────┘
+
+┌─ ▾ 512×512 px | 0.29×0.29 µm | Y / X ──────────┐  expanded
 │  [Composite?] [Show scan path?] [Axes?]         │
 │  ┌─ Channel 0 ──────────────┐ ┌─ Channel 1 ─┐ │
 │  │  canvas + contrast/LUT    │ │  …          │ │
@@ -64,8 +67,9 @@ Reuse host classes (`card`, `ok`, `mini`) — do not add unscoped card CSS.
 └─────────────────────────────────────────────────┘
 ```
 
-Mounted by `AcqStoreReferenceView.mount(#acqstoreReferenceHost)`. Expanded by
-`setFromOpenPayload` when `payload.reference` is present.
+Title text comes from archive monolith `formatPlaneMetaText` (disclosure `h2`,
+visible when collapsed). Range popover matches monolith: title+Log, LUT-colored
+histogram, one Min|Max|Auto row.
 
 ## Phase B insert order
 
