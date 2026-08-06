@@ -2,7 +2,7 @@
 
 Maintainer-only. Not published to the public MkDocs site.
 
-Use this **before** pasting the public end-user [LLM prompt](https://mapmanager.github.io/acqstore-server/llm/prompt/) when testing web LLMs (ChatGPT, Gemini, etc.) on a logged-in account that may have personal or project memory.
+Use this **before** pasting the public end-user [LLM prompt](https://mapmanager.github.io/acqstore-server/llm/prompt/) when testing web LLMs (ChatGPT, Anthropic, Cursor, etc.) on a logged-in account that may have personal or project memory.
 
 ## How to use
 

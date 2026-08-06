@@ -109,7 +109,13 @@ function createImageViewport(canvas, options={}) {
   }
   function drawAxisGuide() {
     if (!axisStart || !axisCurrent) return;
-    const plot = plotRect();
+    // Screen-space rectangle of the drawn image (same as Axes frame).
+    const imgLeft = offsetX;
+    const imgTop = offsetY;
+    const imgRight = offsetX + imageWidth * scaleX;
+    const imgBottom = offsetY + imageHeight * scaleY;
+    const imgWidth = Math.max(1, imgRight - imgLeft);
+    const imgHeight = Math.max(1, imgBottom - imgTop);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
@@ -127,22 +133,22 @@ function createImageViewport(canvas, options={}) {
     } else if (mode === 'axisH') {
       const x0 = Math.min(axisStart.x, axisCurrent.x);
       const x1 = Math.max(axisStart.x, axisCurrent.x);
-      ctx.fillRect(x0, plot.top, Math.max(1, x1 - x0), plot.height);
+      ctx.fillRect(x0, imgTop, Math.max(1, x1 - x0), imgHeight);
       ctx.beginPath();
-      ctx.moveTo(x0 + 0.5, plot.top);
-      ctx.lineTo(x0 + 0.5, plot.bottom);
-      ctx.moveTo(x1 + 0.5, plot.top);
-      ctx.lineTo(x1 + 0.5, plot.bottom);
+      ctx.moveTo(x0 + 0.5, imgTop);
+      ctx.lineTo(x0 + 0.5, imgBottom);
+      ctx.moveTo(x1 + 0.5, imgTop);
+      ctx.lineTo(x1 + 0.5, imgBottom);
       ctx.stroke();
     } else if (mode === 'axisV') {
       const y0 = Math.min(axisStart.y, axisCurrent.y);
       const y1 = Math.max(axisStart.y, axisCurrent.y);
-      ctx.fillRect(plot.left, y0, plot.width, Math.max(1, y1 - y0));
+      ctx.fillRect(imgLeft, y0, imgWidth, Math.max(1, y1 - y0));
       ctx.beginPath();
-      ctx.moveTo(plot.left, y0 + 0.5);
-      ctx.lineTo(plot.right, y0 + 0.5);
-      ctx.moveTo(plot.left, y1 + 0.5);
-      ctx.lineTo(plot.right, y1 + 0.5);
+      ctx.moveTo(imgLeft, y0 + 0.5);
+      ctx.lineTo(imgRight, y0 + 0.5);
+      ctx.moveTo(imgLeft, y1 + 0.5);
+      ctx.lineTo(imgRight, y1 + 0.5);
       ctx.stroke();
     }
     ctx.restore();
