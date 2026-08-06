@@ -98,18 +98,21 @@ def build_status_page(
     log_path = log_file_path()
 
     ui.colors(primary='#38bdf8')
+    # Native single-page window: no page-level scroll; log scrolls inside its area.
+    ui.query('body').classes('overflow-hidden')
 
-    with ui.column().classes('w-full p-3 gap-2').style(
-        'height: calc(100vh - 40px); overflow: hidden; '
-        'display: flex; flex-direction: column; box-sizing: border-box;'
+    with ui.column().classes('w-full h-screen p-3 gap-2').style(
+        'overflow: hidden; display: flex; flex-direction: column; '
+        'box-sizing: border-box;'
     ):
-        with ui.row().classes('w-full items-center gap-2 flex-wrap'):
+        with ui.row().classes('w-full items-center gap-2 flex-nowrap'):
             ui.label(APP_NAME).classes('text-h6 text-primary')
             ui.label('|').classes('text-grey-6')
             ui.label(f'v{APP_VERSION}').classes('text-body2 text-grey-5')
-            ui.label('|').classes('text-grey-6')
+            ui.space()
             docs_btn = ui.button(
                 'Documentation',
+                icon='open_in_new',
                 on_click=lambda: webbrowser.open(PUBLIC_DOCS_URL),
             ).props('outline dense color=primary')
             docs_btn.tooltip('Open the AcqStore Server user docs in your browser')
@@ -242,16 +245,22 @@ def build_status_page(
             )
             health_btn.tooltip('Ask the server if it is responding')
 
-            open_demo_btn = ui.button('Open demo', on_click=_open_demo).props(
-                'color=primary'
-            )
+            open_demo_btn = ui.button(
+                'Open demo',
+                icon='open_in_new',
+                on_click=_open_demo,
+            ).props('color=primary')
             open_demo_btn.tooltip('Open the browser demo for this server')
 
         # Secondary / ops tools (collapsed by default).
         with ui.expansion('Diagnostics', value=False).classes('w-full'):
             with ui.row().classes('w-full gap-2 flex-wrap'):
                 # Opens FastAPI /docs (OpenAPI) on the server port.
-                api_docs_btn = ui.button('API docs', on_click=_open_docs).props('outline')
+                api_docs_btn = ui.button(
+                    'API docs',
+                    icon='open_in_new',
+                    on_click=_open_docs,
+                ).props('outline')
                 api_docs_btn.tooltip('Open interactive HTTP API documentation')
 
                 list_btn = ui.button(
@@ -293,7 +302,7 @@ def build_status_page(
         # In-memory process buffer via get_ui_log_text(); see module docstring.
         # ui.label('Log').classes('text-caption text-grey-5')
         with ui.scroll_area().classes('w-full border rounded min-h-0').style(
-            'flex: 1 1 auto; min-height: 120px;'
+            'flex: 1 1 auto; min-height: 0;'
         ):
             log_view = (
                 ui.label(get_ui_log_text())
@@ -307,10 +316,13 @@ def build_status_page(
 
         ui.timer(0.5, _refresh_log)
 
-    with ui.footer().classes('bg-grey-10 text-grey-4 q-px-md q-py-xs'):
-        footer = ui.label(
-            format_status_line(controller.status())
-        ).classes('text-caption')
+        # In-flow status bar (not Quasar ui.footer) so the log flexes above it.
+        with ui.row().classes(
+            'w-full bg-grey-10 text-grey-4 q-px-md q-py-xs items-center'
+        ).style('flex: 0 0 auto;'):
+            footer = ui.label(
+                format_status_line(controller.status())
+            ).classes('text-caption')
 
         def _refresh_footer_and_controls() -> None:
             text = format_status_line(controller.status())

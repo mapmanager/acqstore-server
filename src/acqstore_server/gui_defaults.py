@@ -26,7 +26,8 @@ def setUpGuiDefaults(text_size: str = 'text-xs') -> None:
     ui.label.default_props('dense')
 
     ui.button.default_classes(text_size)
-    ui.button.default_props('dense')
+    # Quasar QBtn defaults to uppercase; no-caps matches CloudScope usage.
+    ui.button.default_props('dense no-caps')
 
     ui.checkbox.default_classes(text_size)
     ui.checkbox.default_props(f'dense size={text_size_quasar}')
