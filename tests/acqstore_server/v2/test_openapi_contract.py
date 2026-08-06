@@ -43,8 +43,14 @@ def test_openapi_keeps_v2_json_models_camel_case() -> None:
     health = schemas['HealthResponse']['properties']
     assert 'apiVersion' in health
     assert 'serverVersion' in health
+    assert 'acqstoreVersion' in health
+    assert 'buildTimestampEastern' in health
+    assert 'gitCommit' in health
     assert 'api_version' not in health
     assert 'server_version' not in health
+    assert 'acqstore_version' not in health
+    assert 'build_timestamp_eastern' not in health
+    assert 'git_commit' not in health
 
     open_response = schemas['OpenResponse']['properties']
     assert 'sessionId' in open_response

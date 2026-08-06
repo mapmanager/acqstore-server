@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Submit the pre-notarization zip to Apple notary service and wait for the result.
+# Submit the signed .dmg to Apple notary service and wait for the result.
 #
 # notarytool prints a submission id before the upload completes. If the upload
 # then fails, that id is never processed and querying it reports "In Progress"
@@ -11,14 +11,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/_config.sh"
 # shellcheck source=/dev/null
+source "$SCRIPT_DIR/_dmg_paths.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/_secrets.sh"
 
-if [[ ! -f "$PRE_NOTARIZE_ZIP" ]]; then
-  echo "ERROR: Zip not found: $PRE_NOTARIZE_ZIP" >&2
+if [[ ! -f "$DMG_PATH" ]]; then
+  echo "ERROR: Signed dmg not found: $DMG_PATH" >&2
+  echo "Run build_dmg.sh first." >&2
   exit 2
 fi
 
-SUBMIT_LOG="$DIST_DIR/notary_submit.log"
+SUBMIT_LOG="$DIST_DIR/notary_submit_dmg.log"
 
 NOTARY_ARGS=(
   --keychain-profile "$NOTARY_PROFILE"
@@ -31,20 +34,20 @@ if [[ "${NOTARY_S3_ACCELERATION:-0}" != "1" ]]; then
   NOTARY_ARGS+=(--no-s3-acceleration)
 fi
 
-echo "[notary] Submitting: $PRE_NOTARIZE_ZIP"
-echo "[notary] Profile   : $NOTARY_PROFILE"
-rm -f "$NOTARY_SUBMISSION_ID_FILE"
-mkdir -p "$(dirname "$NOTARY_SUBMISSION_ID_FILE")"
+echo "[notary-dmg] Submitting: $DMG_PATH"
+echo "[notary-dmg] Profile   : $NOTARY_PROFILE"
+rm -f "$NOTARY_DMG_SUBMISSION_ID_FILE"
+mkdir -p "$(dirname "$NOTARY_DMG_SUBMISSION_ID_FILE")"
 
 set +e
-xcrun notarytool submit "$PRE_NOTARIZE_ZIP" "${NOTARY_ARGS[@]}" 2>&1 | tee "$SUBMIT_LOG"
+xcrun notarytool submit "$DMG_PATH" "${NOTARY_ARGS[@]}" 2>&1 | tee "$SUBMIT_LOG"
 SUBMIT_RC="${PIPESTATUS[0]}"
 set -e
 
 SUB_ID="$(sed -nE 's/^[[:space:]]*id:[[:space:]]*([0-9A-Fa-f-]+).*/\1/p' "$SUBMIT_LOG" | head -1)"
 if [[ "$SUB_ID" =~ ^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]]; then
-  echo "$SUB_ID" > "$NOTARY_SUBMISSION_ID_FILE"
-  echo "[notary] Submission id: $SUB_ID"
+  echo "$SUB_ID" > "$NOTARY_DMG_SUBMISSION_ID_FILE"
+  echo "[notary-dmg] Submission id: $SUB_ID"
 else
   SUB_ID=""
 fi
@@ -60,16 +63,16 @@ STATUS="$(sed -nE 's/^[[:space:]]*status:[[:space:]]*(.*)/\1/p' "$SUBMIT_LOG" | 
 
 if [[ "$STATUS" == "Accepted" ]]; then
   if (( SUBMIT_RC != 0 )); then
-    echo "[notary] WARNING: notarytool exit code was ${SUBMIT_RC}, but status is Accepted; continuing."
+    echo "[notary-dmg] WARNING: notarytool exit code was ${SUBMIT_RC}, but status is Accepted; continuing."
   fi
-  echo "[notary] Accepted: $SUB_ID"
+  echo "[notary-dmg] Accepted: $SUB_ID"
   exit 0
 fi
 
-echo "ERROR: app notarization did not succeed (exit ${SUBMIT_RC}, status '${STATUS:-<none>}')." >&2
+echo "ERROR: dmg notarization did not succeed (exit ${SUBMIT_RC}, status '${STATUS:-<none>}')." >&2
 echo "Full submit output: $SUBMIT_LOG" >&2
 if [[ -n "$SUB_ID" ]]; then
-  echo "[notary] Fetching notary log..." >&2
+  echo "[notary-dmg] Fetching notary log..." >&2
   xcrun notarytool log "$SUB_ID" --keychain-profile "$NOTARY_PROFILE" >&2 || true
 fi
 exit 1

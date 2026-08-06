@@ -39,7 +39,7 @@ from acqstore_server.v2.schemas import (
     SessionResponse,
     SourceResponse,
 )
-from acqstore_server._version import __version__
+from acqstore_server._version import __version__, get_acqstore_version, get_stamped_build_info
 from acqstore_server.v2.session_store import SessionBuffers, SessionStore
 
 PickFileFn = Callable[[Sequence[str] | None], str | None]
@@ -350,11 +350,20 @@ def create_router(
         summary='Check API v2 health',
         description=(
             'Return a lightweight success response without opening a file. '
-            'Includes apiVersion (contract) and serverVersion (package).'
+            'Includes apiVersion, serverVersion, and optional pack-time '
+            'identity (acqstoreVersion, buildTimestampEastern, gitCommit).'
         ),
     )
     def health() -> HealthResponse:
-        return HealthResponse(server_version=__version__)
+        stamped = get_stamped_build_info()
+        git_commit = stamped.get('git_commit')
+        build_ts = stamped.get('build_timestamp_eastern')
+        return HealthResponse(
+            server_version=__version__,
+            acqstore_version=get_acqstore_version(),
+            build_timestamp_eastern=str(build_ts) if build_ts else None,
+            git_commit=str(git_commit) if git_commit and str(git_commit) != 'unknown' else None,
+        )
 
     @router.get(
         '/capabilities',

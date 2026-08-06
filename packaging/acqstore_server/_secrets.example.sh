@@ -6,7 +6,8 @@
 #   chmod 600 packaging/acqstore_server/_secrets.sh
 #
 # You can reuse the same Developer ID / notarytool profile as CloudScope
-# (packaging/macos/_secrets.sh) — only the .app / bundle id differ.
+# (cloudscope-app/packaging/macos/_secrets.sh) — only the .app / bundle id differ.
+# Used by build_signed_dmg.sh (primary DMG path) and the legacy zip scripts.
 #
 # Do not commit _secrets.sh.
 

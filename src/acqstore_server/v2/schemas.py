@@ -129,7 +129,22 @@ class HealthResponse(ApiModel):
     api_version: Literal['v2'] = 'v2'
     server_version: str = Field(
         min_length=1,
-        description='Installed acqstore-server package version (pyproject / metadata).',
+        description='Installed acqstore-server package version (pyproject / metadata / pack stamp).',
+    )
+    acqstore_version: str | None = Field(
+        default=None,
+        description='Bundled or installed acqstore package version, when known.',
+    )
+    build_timestamp_eastern: str | None = Field(
+        default=None,
+        description=(
+            'Pack-time US Eastern (Baltimore / America/New_York) timestamp, '
+            'e.g. "2026-08-05 21:41:00 EDT (Baltimore)". Null when not packaged.'
+        ),
+    )
+    git_commit: str | None = Field(
+        default=None,
+        description='Short git commit of acqstore-server at pack time. Null when not packaged.',
     )
 
 

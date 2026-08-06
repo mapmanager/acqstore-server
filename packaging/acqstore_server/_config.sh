@@ -29,8 +29,8 @@ export DIST_DIR="${DIST_DIR:-$SCRIPT_DIR/dist}"
 export BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/build}"
 export BUILD_VENV_DIR="${BUILD_VENV_DIR:-$SCRIPT_DIR/.venv-build}"
 
-# Optional build-info (not required for AcqStore Server v0).
-export BUILD_INFO_PATH="${BUILD_INFO_PATH:-}"
+# Pack-time build identity (written by build_info.sh; gitignored; removed after pack).
+export BUILD_INFO_PATH="${BUILD_INFO_PATH:-$REPO_ROOT/src/acqstore_server/_build_info.py}"
 export BUILD_INFO_JSON_PATH="${BUILD_INFO_JSON_PATH:-$DIST_DIR/build_info.json}"
 
 # Derived paths.
@@ -39,6 +39,9 @@ export APP_PLIST="${APP_PLIST:-$APP_PATH/Contents/Info.plist}"
 export APP_MAIN_BIN="${APP_MAIN_BIN:-$APP_PATH/Contents/MacOS/${APP_NAME}}"
 export PRE_NOTARIZE_ZIP="${PRE_NOTARIZE_ZIP:-$DIST_DIR/${RELEASE_SLUG}-pre-notarize.zip}"
 export NOTARY_SUBMISSION_ID_FILE="${NOTARY_SUBMISSION_ID_FILE:-$DIST_DIR/notary_submission_id.txt}"
+
+# Drag-and-drop DMG (signed .dmg). Versioned path is set by build_dmg.sh / _dmg_paths.sh.
+export NOTARY_DMG_SUBMISSION_ID_FILE="${NOTARY_DMG_SUBMISSION_ID_FILE:-$DIST_DIR/notary_dmg_submission_id.txt}"
 
 # Packaged runtime defaults (two listeners).
 # API (FastAPI / demo /docs): ACQSTORE_SERVER_HOST:ACQSTORE_SERVER_PORT

@@ -3,6 +3,27 @@
 This folder builds, signs, and notarizes `AcqStore Server.app` (NiceGUI native
 status UI + localhost API).
 
+## Primary distribute path (DMG)
+
+For a signed, notarized, stapled drag-drop DMG, use:
+
+```bash
+./packaging/acqstore_server/build_signed_dmg.sh
+# or
+./packaging/acqstore_server/build_signed_dmg.sh --no-pause
+```
+
+Full recipe (prerequisites, notary knobs, recovery):
+[README-BUILD-DMG.md](README-BUILD-DMG.md).
+
+Expected artifacts:
+
+```text
+packaging/acqstore_server/dist/<stamp>/AcqStore Server.app
+packaging/acqstore_server/dist/<stamp>/AcqStore-Server-v{version}-macos.dmg
+packaging/acqstore_server/dist/<stamp>/AcqStore-Server-v{version}-macos.dmg.sha256
+```
+
 ## Source of truth
 
 App-specific knobs live in:
@@ -14,13 +35,20 @@ packaging/acqstore_server/_config.sh
 | Variable | Role |
 |----------|------|
 | `APP_NAME` | Display / `.app` name (`AcqStore Server`) |
-| `RELEASE_SLUG` | Zip basename without spaces (`AcqStore-Server`) |
+| `RELEASE_SLUG` | Zip/DMG basename without spaces (`AcqStore-Server`) |
 | `BUNDLE_ID` | `com.mapmanager.acqstore-server` |
 | `MAIN_PY` | `src/acqstore_server/desktop.py` |
 
 AcqStore must be available as the sibling checkout `../acqstore` (see root
 `[tool.uv.sources]`). Packaging syncs the locked environment from this
 repository; it does not install AcqStore from PyPI.
+
+`build_app.sh` runs `build_info.sh` before packing. That stamps a transient
+`src/acqstore_server/_build_info.py` (gitignored, deleted after the pack) so
+the frozen app reports a real `serverVersion` instead of `0.0.0+unknown`. The
+NiceGUI header still shows **only** `v{version}`; `/api/v2/health` also
+exposes `acqstoreVersion`, `buildTimestampEastern` (US Eastern / Baltimore),
+and `gitCommit`.
 
 ## Local build only (unsigned)
 
@@ -29,7 +57,11 @@ repository; it does not install AcqStore from PyPI.
 open "packaging/acqstore_server/dist/AcqStore Server.app"
 ```
 
-Does **not** codesign or notarize.
+Does **not** codesign or notarize. Default output is
+`packaging/acqstore_server/dist/AcqStore Server.app`. If your shell still has
+`DIST_DIR` exported from a mid-pipeline recovery, either `unset DIST_DIR` or
+prefer the full DMG orchestrator (`build_signed_dmg.sh`), which ignores ambient
+`DIST_DIR` and always stamps a new folder.
 
 ## Signing / notarization setup
 
@@ -39,25 +71,21 @@ chmod 600 packaging/acqstore_server/_secrets.sh
 # edit SIGN_ID and NOTARY_PROFILE
 ```
 
-## Manual release chain
+## Legacy zip release chain
+
+Prefer the DMG path above for user distribution. Zip remains available for CI
+and older workflows.
 
 ```bash
 ./packaging/acqstore_server/build_app.sh
 # smoke-test unsigned app, then:
-./packaging/acqstore_server/codesign_and_zip.sh
-./packaging/acqstore_server/notary_submit.sh
-./packaging/acqstore_server/notary_poll_until_done.sh
-./packaging/acqstore_server/staple_and_verify.sh
-./packaging/acqstore_server/make_release_zip.sh
-```
-
-Or one command after a successful build:
-
-```bash
 ./packaging/acqstore_server/sign_notarize_release.sh
 ```
 
-Artifacts:
+`notary_submit.sh` uses `notarytool submit --wait` (no separate poll in the
+happy path). `notary_poll_until_done.sh` remains for recovery / external ids.
+
+Zip artifacts:
 
 ```text
 packaging/acqstore_server/dist/
@@ -68,8 +96,8 @@ packaging/acqstore_server/dist/
   AcqStore-Server-v{version}-macos-manifest.json
 ```
 
-Tooling: `codesign`, `xcrun notarytool`, `xcrun stapler`, `spctl`, `ditto`
-(no `altool`).
+Tooling: `codesign`, `xcrun notarytool`, `xcrun stapler`, `spctl`, `ditto`,
+`hdiutil` (no `altool`).
 
 ## CI
 

@@ -230,15 +230,18 @@ def test_v2_capabilities_are_sourced_from_acqstore_public_api() -> None:
 
 def test_v2_health_reports_api_and_server_version() -> None:
     from acqstore_server import __version__
+    from acqstore_server._version import get_acqstore_version
 
     response = TestClient(create_app()).get('/api/v2/health')
     assert response.status_code == 200
     payload = response.json()
-    assert payload == {
-        'ok': True,
-        'apiVersion': 'v2',
-        'serverVersion': __version__,
-    }
+    assert payload['ok'] is True
+    assert payload['apiVersion'] == 'v2'
+    assert payload['serverVersion'] == __version__
+    assert payload['acqstoreVersion'] == get_acqstore_version()
+    # Pack-time fields are null outside a stamped/frozen build.
+    assert payload['buildTimestampEastern'] is None
+    assert payload['gitCommit'] is None
 
 
 def test_v2_open_logs_human_readable_acquisition_summary(

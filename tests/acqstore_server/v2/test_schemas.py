@@ -141,4 +141,19 @@ def test_health_response_uses_camel_case_aliases() -> None:
         'ok': True,
         'apiVersion': 'v2',
         'serverVersion': '0.2.0',
+        'acqstoreVersion': None,
+        'buildTimestampEastern': None,
+        'gitCommit': None,
     }
+
+
+def test_health_response_includes_pack_identity_fields() -> None:
+    payload = HealthResponse(
+        server_version='0.2.0',
+        acqstore_version='0.1.0',
+        build_timestamp_eastern='2026-08-05 21:41:00 EDT (Baltimore)',
+        git_commit='abc1234',
+    ).model_dump(by_alias=True)
+    assert payload['acqstoreVersion'] == '0.1.0'
+    assert payload['buildTimestampEastern'] == '2026-08-05 21:41:00 EDT (Baltimore)'
+    assert payload['gitCommit'] == 'abc1234'

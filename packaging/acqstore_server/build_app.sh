@@ -11,6 +11,8 @@
 # - Does NOT codesign or notarize.
 # - Outputs under packaging/acqstore_server/dist and .../build.
 # - Entrypoint is src/acqstore_server/desktop.py (native status UI + API).
+# - nicegui-pack always writes to cwd/dist (no --distpath). When DIST_DIR is a
+#   timestamped subdirectory, we pack into the root then move the .app.
 
 set -euo pipefail
 
@@ -19,6 +21,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_config.sh"
 
 cd "$SCRIPT_DIR"
+
+_cleanup_transient_build_info() {
+  if [[ -n "${BUILD_INFO_PATH:-}" && -f "$BUILD_INFO_PATH" ]]; then
+    rm -f "$BUILD_INFO_PATH"
+    echo "[build] Removed transient build info: $BUILD_INFO_PATH"
+  fi
+}
+
+trap _cleanup_transient_build_info EXIT
 
 echo "[build] Repo root : $REPO_ROOT"
 echo "[build] App name  : $APP_NAME"
@@ -79,9 +90,22 @@ _remove_dir_with_retries() {
   exit 1
 }
 
+# nicegui-pack / PyInstaller always write to cwd/dist (no --distpath). That pack
+# root is packaging/acqstore_server/dist. When DIST_DIR is a timestamped
+# subdirectory, we pack into the root then move the .app into DIST_DIR.
+PACK_DIST_DIR="$SCRIPT_DIR/dist"
+PACK_APP_PATH="$PACK_DIST_DIR/${APP_NAME}.app"
+PACK_ONEDIR_PATH="$PACK_DIST_DIR/${APP_NAME}"
+
 echo "[build] Cleaning dist/build..."
 _remove_dir_with_retries "$DIST_DIR"
 _remove_dir_with_retries "$BUILD_DIR"
+# Clear previous pack outputs at the fixed nicegui-pack location when DIST_DIR
+# is a different folder (timestamped runs). Do not wipe sibling stamp folders.
+if [[ "$DIST_DIR" != "$PACK_DIST_DIR" ]]; then
+  _remove_dir_with_retries "$PACK_APP_PATH"
+  _remove_dir_with_retries "$PACK_ONEDIR_PATH"
+fi
 mkdir -p "$DIST_DIR" "$BUILD_DIR"
 
 # Runtime for the frozen app: NiceGUI status UI + ServerController API (two ports).
@@ -90,6 +114,9 @@ export ACQSTORE_SERVER_HOST="${ACQSTORE_SERVER_HOST:-127.0.0.1}"
 export ACQSTORE_SERVER_PORT="${ACQSTORE_SERVER_PORT:-8767}"
 export ACQSTORE_SERVER_UI_HOST="${ACQSTORE_SERVER_UI_HOST:-127.0.0.1}"
 export ACQSTORE_SERVER_UI_PORT="${ACQSTORE_SERVER_UI_PORT:-8766}"
+
+echo "[build] Stamping build identity..."
+"$SCRIPT_DIR/build_info.sh"
 
 ARGS=(
   --windowed
@@ -113,6 +140,22 @@ echo "[build] Running nicegui-pack..."
   nicegui-pack "${ARGS[@]}" "$MAIN_PY"
 )
 
+if [[ ! -d "$PACK_APP_PATH" ]]; then
+  echo "ERROR: nicegui-pack did not create: $PACK_APP_PATH" >&2
+  exit 3
+fi
+
+if [[ "$APP_PATH" != "$PACK_APP_PATH" ]]; then
+  echo "[build] Moving pack output into DIST_DIR..."
+  echo "[build]   from: $PACK_APP_PATH"
+  echo "[build]   to  : $APP_PATH"
+  mkdir -p "$(dirname "$APP_PATH")"
+  _remove_dir_with_retries "$APP_PATH"
+  ditto "$PACK_APP_PATH" "$APP_PATH"
+  _remove_dir_with_retries "$PACK_APP_PATH"
+  _remove_dir_with_retries "$PACK_ONEDIR_PATH"
+fi
+
 if [[ ! -d "$APP_PATH" ]]; then
   echo "ERROR: expected app not found: $APP_PATH" >&2
   exit 3
@@ -128,5 +171,5 @@ echo "  open '$APP_PATH'"
 echo "[build] Status UI listens on http://${ACQSTORE_SERVER_UI_HOST}:${ACQSTORE_SERVER_UI_PORT}"
 echo "[build] API / demo / docs on http://${ACQSTORE_SERVER_HOST}:${ACQSTORE_SERVER_PORT}"
 echo "[build] Demo: http://${ACQSTORE_SERVER_HOST}:${ACQSTORE_SERVER_PORT}/demo/v2/"
-echo "[build] When ready to sign/notarize:"
-echo "  ./packaging/acqstore_server/sign_notarize_release.sh"
+echo "[build] When ready for a signed DMG:"
+echo "  ./packaging/acqstore_server/build_signed_dmg.sh"
