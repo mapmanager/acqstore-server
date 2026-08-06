@@ -16,9 +16,15 @@
   <div id="status" class="status"></div>
 </div>
 <div id="rangePopover" class="range-popover" hidden role="dialog" aria-label="Display range">
-  <h2 id="rangeTitle">Display range</h2>
+  <div class="range-title-row">
+    <h2 id="rangeTitle">Display range</h2>
+    <label class="toggle">
+      <input id="rangeLog" type="checkbox" checked>
+      Log
+    </label>
+  </div>
   <div class="histogram-wrap">
-    <canvas id="rangeHistogram" width="300" height="100"></canvas>
+    <canvas id="rangeHistogram" width="300" height="75"></canvas>
   </div>
   <div class="range-fields">
     <label>Min <input id="rangeMin" type="number" step="any"></label>
@@ -38,8 +44,8 @@
         <input id="sourceAxes" type="checkbox">
         Axes
       </label>
+      <span id="sourcePlaneMeta" class="plane-meta" hidden></span>
     </div>
-    <div id="sourceContrast" class="card contrast-panel" hidden></div>
     <div id="channels" class="grid"></div>
   </section>
   <div id="imageSplitDivider" class="split-divider" hidden role="separator" aria-orientation="horizontal" aria-label="Resize source and reference panes"></div>
@@ -50,16 +56,16 @@
         <input id="referenceComposite" type="checkbox">
         Composite
       </label>
-      <label id="scanPathControl" class="toggle" hidden>
-        <input id="showScanPath" type="checkbox" checked>
-        Show scan path
-      </label>
       <label id="referenceAxesControl" class="toggle" hidden>
         <input id="referenceAxes" type="checkbox">
         Axes
       </label>
+      <label id="scanPathControl" class="toggle" hidden>
+        <input id="showScanPath" type="checkbox" checked>
+        Show scan path
+      </label>
+      <span id="referencePlaneMeta" class="plane-meta" hidden></span>
     </div>
-    <div id="referenceContrast" class="card contrast-panel" hidden></div>
     <div id="references" class="grid"></div>
     <p id="referenceEmpty">No reference image loaded.</p>
   </section>

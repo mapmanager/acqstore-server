@@ -2,7 +2,7 @@
 import {clamp} from './util.js';
 import {sampledFiniteValues, percentile, autoRange} from './plane.js';
 import {redrawGroupDisplay} from './layout.js';
-import {LUT_OPTION_LABELS, defaultLutForChannelIndex} from './lut.js';
+import {LUT_OPTION_LABELS, defaultLutForChannelIndex, sampleLutRgb} from './lut.js';
 
 function histogramForValues(values, binCount=96) {
   const sorted = sampledFiniteValues(values).sort((a, b) => a - b);
@@ -32,6 +32,9 @@ function createContrastController(elements, redrawView) {
   function selectedView() {
     return selectedId ? views.get(selectedId) : null;
   }
+  function logScaleEnabled() {
+    return Boolean(elements.log?.checked);
+  }
   function numberText(value) {
     const magnitude = Math.abs(value);
     if ((magnitude !== 0 && magnitude < 0.001) || magnitude >= 100000) {
@@ -55,15 +58,15 @@ function createContrastController(elements, redrawView) {
     if (!activeRangeButton) return;
     const rect = activeRangeButton.getBoundingClientRect();
     const width = elements.popover.offsetWidth || 330;
-    const height = elements.popover.offsetHeight || 190;
+    const height = elements.popover.offsetHeight || 170;
     const margin = 8;
     const left = clamp(rect.left, margin, Math.max(margin, window.innerWidth - width - margin));
-    const below = rect.bottom + 6;
-    const top = below + height <= window.innerHeight - margin
-      ? below
-      : Math.max(margin, rect.top - height - 6);
+    const above = rect.top - height - 6;
+    const top = above >= margin
+      ? above
+      : Math.min(window.innerHeight - height - margin, rect.bottom + 6);
     elements.popover.style.left = `${Math.round(left)}px`;
-    elements.popover.style.top = `${Math.round(top)}px`;
+    elements.popover.style.top = `${Math.round(Math.max(margin, top))}px`;
   }
   function drawHistogram() {
     const view = selectedView();
@@ -75,14 +78,19 @@ function createContrastController(elements, redrawView) {
     const width = canvas.width, height = canvas.height;
     const left = 6, right = width - 6, top = 6, bottom = height - 8;
     const maxCount = Math.max(1, ...histogram.bins);
+    const useLog = logScaleEnabled();
+    const maxFrac = useLog ? Math.log1p(maxCount) : maxCount;
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#020617';
     ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = '#64748b';
+    const binCount = histogram.bins.length;
+    // Mid-high LUT sample: channel LUTs peak as Red/Green/… near ~0.75; t=1 is near-white.
+    const [r, g, b] = sampleLutRgb(view.display.lut, 0.75);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
     histogram.bins.forEach((count, index) => {
-      const x0 = left + index / histogram.bins.length * (right - left);
-      const x1 = left + (index + 1) / histogram.bins.length * (right - left);
-      const frac = Math.log1p(count) / Math.log1p(maxCount);
+      const x0 = left + index / binCount * (right - left);
+      const x1 = left + (index + 1) / binCount * (right - left);
+      const frac = (useLog ? Math.log1p(count) : count) / maxFrac;
       const barHeight = frac * (bottom - top);
       ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
     });
@@ -152,47 +160,34 @@ function createContrastController(elements, redrawView) {
     select.value = current in LUT_OPTION_LABELS ? current : 'gray';
     return select;
   }
-  function mountPanelRows(panel, group) {
-    panel.replaceChildren();
-    const groupViews = [...views.values()]
-      .filter(view => view.group === group)
-      .sort((a, b) => a.channelIndex - b.channelIndex);
-    if (groupViews.length === 0) {
-      panel.hidden = true;
-      return;
-    }
-    panel.hidden = false;
-    const rows = document.createElement('div');
-    rows.className = 'contrast-rows';
-    for (const view of groupViews) {
-      const row = document.createElement('div');
-      row.className = 'contrast-row';
-      row.dataset.viewId = view.id;
-      const channelLabel = document.createElement('span');
-      channelLabel.className = 'contrast-channel-label';
-      channelLabel.textContent = view.label;
-      const lutSelect = buildLutSelect(view.display.lut);
-      lutSelect.title = 'Color LUT';
-      lutSelect.setAttribute('aria-label', `${view.label} color LUT`);
-      lutSelect.addEventListener('change', () => {
-        view.display.lut = lutSelect.value;
-        redrawView(view, {resetView:false});
-      });
-      const rangeButton = document.createElement('button');
-      rangeButton.type = 'button';
-      rangeButton.textContent = 'Range…';
-      rangeButton.addEventListener('click', () => {
-        if (!elements.popover.hidden && selectedId === view.id) closePopover();
-        else openPopoverFor(view.id, rangeButton);
-      });
-      row.append(channelLabel, lutSelect, rangeButton);
-      rows.appendChild(row);
-    }
-    panel.appendChild(rows);
-  }
-  function mountContrastPanels() {
-    mountPanelRows(elements.sourcePanel, 'source');
-    mountPanelRows(elements.referencePanel, 'reference');
+  /**
+   * Build one contrast widget: channel label | LUT select | Range…
+   * Mounted into each channel/composite card toolbar by layout.
+   */
+  function createContrastRow(view) {
+    const row = document.createElement('div');
+    row.className = 'contrast-row';
+    row.dataset.viewId = view.id;
+    const channelLabel = document.createElement('span');
+    channelLabel.className = 'contrast-channel-label';
+    channelLabel.textContent = view.label;
+    const lutSelect = buildLutSelect(view.display.lut);
+    lutSelect.title = 'Color LUT';
+    lutSelect.setAttribute('aria-label', `${view.label} color LUT`);
+    lutSelect.addEventListener('change', () => {
+      view.display.lut = lutSelect.value;
+      redrawView(view, {resetView:false});
+      if (!elements.popover.hidden && selectedId === view.id) drawHistogram();
+    });
+    const rangeButton = document.createElement('button');
+    rangeButton.type = 'button';
+    rangeButton.textContent = 'Range…';
+    rangeButton.addEventListener('click', () => {
+      if (!elements.popover.hidden && selectedId === view.id) closePopover();
+      else openPopoverFor(view.id, rangeButton);
+    });
+    row.append(channelLabel, lutSelect, rangeButton);
+    return row;
   }
 
   elements.min.addEventListener('input', applyNumericRange);
@@ -204,6 +199,9 @@ function createContrastController(elements, redrawView) {
     syncPopoverFields();
     redrawView(view, {resetView:false});
     drawHistogram();
+  });
+  elements.log?.addEventListener('change', () => {
+    if (!elements.popover.hidden) drawHistogram();
   });
   elements.histogram.addEventListener('pointerdown', event => {
     const view = selectedView();
@@ -248,16 +246,12 @@ function createContrastController(elements, redrawView) {
         view.display = {lut: defaultLutForChannelIndex(view.channelIndex), min, max};
         views.set(view.id, view);
       }
-      mountContrastPanels();
     },
+    createContrastRow,
     reset() {
       closePopover();
       views.clear();
       selectedId = null;
-      elements.sourcePanel.replaceChildren();
-      elements.referencePanel.replaceChildren();
-      elements.sourcePanel.hidden = true;
-      elements.referencePanel.hidden = true;
     },
     redrawGroup(group) {
       redrawGroupDisplay(group, {resetView:false});

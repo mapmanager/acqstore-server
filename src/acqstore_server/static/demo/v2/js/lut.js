@@ -2,7 +2,7 @@
 import {clamp} from './util.js';
 
 const LUT_OPTION_LABELS = {
-  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green',
+  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green', blue:'Blue',
   fire:'Fire', hot:'Hot', viridis:'Viridis', magma:'Magma', inferno:'Inferno', cividis:'Cividis',
 };
 
@@ -28,6 +28,7 @@ const LUT_COLOR_STOPS = {
   red: [[0,[0,0,0]],[0.35,[110,0,0]],[0.75,[255,45,25]],[1,[255,235,230]]],
   yellow: [[0,[0,0,0]],[0.35,[105,80,0]],[0.75,[255,210,0]],[1,[255,255,220]]],
   green: [[0,[0,0,0]],[0.35,[0,90,42]],[0.75,[0,220,85]],[1,[235,255,235]]],
+  blue: [[0,[0,0,0]],[0.35,[0,40,110]],[0.75,[40,90,255]],[1,[230,235,255]]],
   cyan: [[0,[0,0,0]],[0.35,[0,77,102]],[0.75,[0,200,255]],[1,[230,255,255]]],
   magenta: [[0,[0,0,0]],[0.35,[95,0,105]],[0.75,[255,0,220]],[1,[255,230,255]]],
 };
@@ -44,7 +45,7 @@ function lutColor(t, lut) {
   return [gray, gray, gray];
 }
 function buildLutTables() {
-  const names = ['gray', 'yellow', 'cyan', 'magenta', 'red', 'green', 'fire', 'hot', 'viridis', 'magma', 'inferno', 'cividis'];
+  const names = ['gray', 'yellow', 'cyan', 'magenta', 'red', 'green', 'blue', 'fire', 'hot', 'viridis', 'magma', 'inferno', 'cividis'];
   return Object.fromEntries(names.map(name => {
     const table = new Uint8ClampedArray(256 * 3);
     for (let index = 0; index < 256; index++) {

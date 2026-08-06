@@ -93,19 +93,9 @@ function createSavePngButton({canvas, getViewport, group, channelIndex, composit
   return button;
 }
 
-function createCardTitleRow(titleText, saveButton) {
-  const row = document.createElement('div');
-  row.className = 'card-title-row';
-  const title = document.createElement('h2');
-  title.textContent = titleText;
-  row.append(title, saveButton);
-  return row;
-}
-
 export {
   sourceFileLabel,
   suggestedPngName,
   saveDisplayCanvasPng,
   createSavePngButton,
-  createCardTitleRow,
 };

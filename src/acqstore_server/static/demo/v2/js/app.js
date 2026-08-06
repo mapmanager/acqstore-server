@@ -21,10 +21,9 @@ import {
   sourcePane,
   referencePane,
   imageSplitDivider,
-  sourceContrast,
-  referenceContrast,
   rangePopover,
   rangeTitle,
+  rangeLog,
   rangeHistogram,
   rangeMin,
   rangeMax,
@@ -36,9 +35,11 @@ import {scanPathPoints} from './scan-path.js';
 import {createSplitPane} from './split-pane.js';
 import {createContrastController} from './contrast.js';
 import {
+  bindContrastUi,
   destroyActiveViews,
   updateCompositeControls,
   updateAxesControls,
+  updatePlaneMeta,
   mountGroupLayout,
   redrawGroupDisplay,
   drawChannelView,
@@ -113,6 +114,7 @@ async function renderOpen(payload) {
   state.activeViews = views;
   updateCompositeControls();
   updateAxesControls();
+  updatePlaneMeta();
   splitPane.setEnabled(Boolean(reference));
   contrastController.setViews(views);
   mountGroupLayout('source');
@@ -136,10 +138,9 @@ const splitPane = createSplitPane({
 });
 const contrastController = createContrastController(
   {
-    sourcePanel: sourceContrast,
-    referencePanel: referenceContrast,
     popover: rangePopover,
     title: rangeTitle,
+    log: rangeLog,
     histogram: rangeHistogram,
     min: rangeMin,
     max: rangeMax,
@@ -147,6 +148,7 @@ const contrastController = createContrastController(
   },
   drawChannelView,
 );
+bindContrastUi(contrastController);
 async function runOpen() {
   setBusy(true); setStatus('Opening acquisition…');
   try {

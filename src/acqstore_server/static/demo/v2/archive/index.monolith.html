@@ -40,18 +40,22 @@ button:disabled { opacity:.45; cursor:default; }
 .section-heading h2 { margin:0; }
 .split-pane > .section-heading { margin-bottom:4px; }
 .split-pane > .section-heading h2 { font-size:14px; }
-.contrast-panel.card { padding:6px 8px; }
+.plane-meta {
+  color:var(--muted); font-size:11px; font-weight:500; line-height:1.2;
+  white-space:nowrap;
+}
+.plane-meta[hidden] { display:none; }
 .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer; }
 .toggle input { margin:0; }
-.contrast-panel { flex:0 0 auto; padding:6px 8px; }
-.contrast-panel[hidden] { display:none; }
-.contrast-rows { display:flex; flex-direction:column; gap:4px; }
+.card-toolbar {
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  flex:0 0 auto; min-width:0;
+}
+.card-toolbar > .save-png-btn { margin-left:auto; }
 .contrast-row {
   display:flex; flex-wrap:wrap; align-items:center; gap:8px;
-  padding:2px 0; border-bottom:1px solid var(--line);
+  padding:0; min-width:0;
 }
-.contrast-row:last-child { border-bottom:0; padding-bottom:0; }
-.contrast-row:first-child { padding-top:0; }
 .contrast-row .contrast-channel-label {
   min-width:72px; color:var(--text); font-size:11px; font-weight:600; line-height:1.2;
 }
@@ -64,12 +68,30 @@ button:disabled { opacity:.45; cursor:default; }
 }
 .range-popover { position:fixed; z-index:20; width:330px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:#07101f; box-shadow:0 16px 38px rgba(0,0,0,.55); }
 .range-popover[hidden] { display:none; }
-.range-popover h2 { margin-bottom:8px; }
-.histogram-wrap { padding:4px; border:1px solid var(--line); border-radius:8px; background:#020617; }
-#rangeHistogram { width:300px; height:100px; cursor:ew-resize; touch-action:none; }
-.range-fields { display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:8px; margin-top:8px; }
-.range-fields label { display:grid; gap:4px; color:var(--muted); font-size:12px; }
-.range-fields input { width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text); }
+.range-title-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:0 0 6px;
+}
+.range-title-row h2 {
+  margin:0; font-size:11px; font-weight:600; line-height:1.2; min-width:0;
+}
+.range-title-row .toggle { font-size:11px; }
+.histogram-wrap { padding:0; border:0; border-radius:0; background:#020617; }
+#rangeHistogram { display:block; width:300px; height:75px; cursor:ew-resize; touch-action:none; }
+.range-fields {
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:6px;
+  color:var(--muted); font-size:11px; line-height:1.2;
+}
+.range-fields label {
+  display:flex; align-items:center; gap:4px; color:var(--muted); font-size:11px;
+}
+.range-fields input {
+  width:7.5em; padding:3px 6px; border:1px solid var(--line); border-radius:6px;
+  background:#020617; color:var(--text); font-size:11px; line-height:1.2;
+}
+.range-fields button {
+  padding:3px 8px; font-size:11px; font-weight:600; line-height:1.2; border-radius:6px;
+}
 summary { color:var(--text); cursor:pointer; font-size:14px; font-weight:700; }
 details.card { margin-top:12px; }
 details[open] summary { margin-bottom:10px; }
@@ -93,7 +115,6 @@ details[open] summary { margin-bottom:10px; }
 .split-viewport.single .split-pane-bottom { flex:0 0 auto; }
 .split-pane > h2,
 .split-pane > .section-heading,
-.split-pane > .contrast-panel,
 .split-pane > #referenceEmpty { flex:0 0 auto; }
 .split-pane > .grid {
   flex:1 1 0; min-height:0;
@@ -102,8 +123,6 @@ details[open] summary { margin-bottom:10px; }
 .split-pane .grid > .card {
   display:flex; flex-direction:column; gap:4px; min-height:0; height:100%; overflow:hidden;
 }
-.split-pane .grid > .card > h2,
-.split-pane .grid > .card > .meta { flex:0 0 auto; margin-bottom:0; font-size:13px; }
 .canvas-wrap {
   position:relative; flex:1 1 auto; min-height:0; height:auto; overflow:hidden;
   background:#020617; touch-action:none;
@@ -114,18 +133,11 @@ details[open] summary { margin-bottom:10px; }
 .canvas-wrap.axis-zooming-v canvas { cursor:row-resize; }
 .canvas-wrap.region-zooming canvas { cursor:crosshair; }
 pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px; background:#020617; font-size:11px; }
-.meta { color:var(--muted); font-size:12px; margin:0 0 8px; }
-.card-title-row {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  margin:0 0 10px; min-width:0;
-}
-.card-title-row h2 { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .save-png-btn {
   flex:0 0 auto; padding:3px 8px; font-size:11px; font-weight:600; line-height:1.2;
   border-radius:6px; border:0; background:var(--accent); color:#03131d; cursor:pointer;
 }
 .save-png-btn:disabled { opacity:.45; cursor:default; }
-.split-pane .grid > .card > .card-title-row { flex:0 0 auto; margin-bottom:0; }
 /* LLM_COPY:REFERENCE_VIEW_CSS_END */
 
 </style>
@@ -140,9 +152,15 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
   <div id="status" class="status"></div>
 </div>
 <div id="rangePopover" class="range-popover" hidden role="dialog" aria-label="Display range">
-  <h2 id="rangeTitle">Display range</h2>
+  <div class="range-title-row">
+    <h2 id="rangeTitle">Display range</h2>
+    <label class="toggle">
+      <input id="rangeLog" type="checkbox" checked>
+      Log
+    </label>
+  </div>
   <div class="histogram-wrap">
-    <canvas id="rangeHistogram" width="300" height="100"></canvas>
+    <canvas id="rangeHistogram" width="300" height="75"></canvas>
   </div>
   <div class="range-fields">
     <label>Min <input id="rangeMin" type="number" step="any"></label>
@@ -162,8 +180,8 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
         <input id="sourceAxes" type="checkbox">
         Axes
       </label>
+      <span id="sourcePlaneMeta" class="plane-meta" hidden></span>
     </div>
-    <div id="sourceContrast" class="card contrast-panel" hidden></div>
     <div id="channels" class="grid"></div>
   </section>
   <div id="imageSplitDivider" class="split-divider" hidden role="separator" aria-orientation="horizontal" aria-label="Resize source and reference panes"></div>
@@ -174,16 +192,16 @@ pre { max-height:360px; overflow:auto; margin:0; padding:10px; border-radius:8px
         <input id="referenceComposite" type="checkbox">
         Composite
       </label>
-      <label id="scanPathControl" class="toggle" hidden>
-        <input id="showScanPath" type="checkbox" checked>
-        Show scan path
-      </label>
       <label id="referenceAxesControl" class="toggle" hidden>
         <input id="referenceAxes" type="checkbox">
         Axes
       </label>
+      <label id="scanPathControl" class="toggle" hidden>
+        <input id="showScanPath" type="checkbox" checked>
+        Show scan path
+      </label>
+      <span id="referencePlaneMeta" class="plane-meta" hidden></span>
     </div>
-    <div id="referenceContrast" class="card contrast-panel" hidden></div>
     <div id="references" class="grid"></div>
     <p id="referenceEmpty">No reference image loaded.</p>
   </section>
@@ -225,6 +243,9 @@ const imageSplit = document.getElementById('imageSplit');
 const sourcePane = document.getElementById('sourcePane');
 const referencePane = document.getElementById('referencePane');
 const imageSplitDivider = document.getElementById('imageSplitDivider');
+const sourcePlaneMeta = document.getElementById('sourcePlaneMeta');
+const referencePlaneMeta = document.getElementById('referencePlaneMeta');
+const rangeLog = document.getElementById('rangeLog');
 const state = {
   currentSessionId: null,
   /** Basename including extension of the opened acquisition (for Save PNG names). */
@@ -267,8 +288,9 @@ async function getJson(url, options={}) {
 // Do not invent a simpler viewport, axes, or Save PNG.
 //
 // REQUIRED BEHAVIOR (exact product spec):
-// 1) N reference.channels => N canvas panels when Composite OFF; N contrast rows.
-// 2) Each panel title row = label + Save PNG (createSavePngButton / createCardTitleRow).
+// 1) N reference.channels => N canvas panels when Composite OFF; contrast in each card.
+// 2) Each panel: card toolbar [label][LUT][Range…][Save PNG] above canvas (no title row).
+//    Composite ON: one card with [ch0 contrast][ch1 contrast][Save PNG] above canvas.
 // 3) Orientation: (i) transposePlane then (ii) Y-flip in createImageViewport.draw
 //    (ctx.scale(scaleX, -scaleY)). Both required.
 // 4) Axes ON => drawAxisLabels: numeric tick labels + unit. Use the SAME
@@ -276,7 +298,9 @@ async function getJson(url, options={}) {
 //    density on bottom and left.
 // 5) Interactions: wheel zoom, Shift+drag pan, double-click home, click+drag
 //    zoom box / region zoom (createImageViewport).
-// 6) Contrast: one row [label][LUT select][Range…] + log histogram popover.
+// 6) Contrast: one row [label][LUT select][Range…] + log histogram popover;
+//    Save PNG sits on the same toolbar row (right-aligned). Histogram bars use
+//    the channel LUT; Log checkbox (default on) toggles log/linear Y scale.
 // 7) After first setImage/mount: call resize on next animation frame(s) so the
 //    first reference panel is not offset when the split layout settles.
 // =====================================================================
@@ -289,12 +313,85 @@ function destroyActiveViews() {
     state.compositeSlots[group]?.viewport?.destroy();
     state.compositeSlots[group] = null;
   }
+  updatePlaneMeta();
 }
 function groupViews(group) {
   return state.activeViews
     .filter(view => view.group === group)
     .slice()
     .sort((a, b) => a.channelIndex - b.channelIndex);
+}
+function formatStepValue(value) {
+  if (!Number.isFinite(value)) return '—';
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-6 || magnitude >= 1e6)) {
+    return value.toExponential(6);
+  }
+  // Light trim only — value is the JSON step, never size×step.
+  return String(Number(value.toPrecision(8)));
+}
+/** Compact unit label for the plane-meta row (keeps time units; unlike tick gutters). */
+function metaUnitLabel(unit) {
+  const compact = String(unit || '').trim().toLowerCase();
+  if (['s', 'sec', 'second', 'seconds'].includes(compact)) return 's';
+  if (['ms', 'millisecond', 'milliseconds'].includes(compact)) return 'ms';
+  if (['um', 'µm', 'micrometer', 'micrometers', 'micrometre', 'micrometres'].includes(compact)) {
+    return 'µm';
+  }
+  return String(unit || '').trim();
+}
+/**
+ * Build section-heading meta: "| <px> | <step0 unit0 × step1 unit1> | <labels>".
+ * Reads plane.axes / reference.plane.axes via view.axes (dim0 then dim1). No size×step.
+ */
+function formatPlaneMetaText(view) {
+  const axes = view?.axes || {};
+  // displayAxesFromPlane: axes.x ← dim0, axes.y ← dim1 (Open response plane.axes order).
+  const dim0 = axes.x;
+  const dim1 = axes.y;
+  const size0 = Number(dim0?.size);
+  const size1 = Number(dim1?.size);
+  const pixels = (size0 > 0 && size1 > 0)
+    ? `${size0}×${size1} px`
+    : '—';
+
+  const step0 = Number(dim0?.step);
+  const step1 = Number(dim1?.step);
+  const unit0 = metaUnitLabel(dim0?.unit);
+  const unit1 = metaUnitLabel(dim1?.unit);
+  let physical = '—';
+  if (Number.isFinite(step0) || Number.isFinite(step1)) {
+    const s0 = Number.isFinite(step0) ? formatStepValue(step0) : '—';
+    const s1 = Number.isFinite(step1) ? formatStepValue(step1) : '—';
+    if (unit0 && unit1 && unit0 === unit1 && Number.isFinite(step0) && Number.isFinite(step1)) {
+      physical = `${s0}×${s1} ${unit0}`;
+    } else {
+      const p0 = Number.isFinite(step0) ? (unit0 ? `${s0} ${unit0}` : s0) : '—';
+      const p1 = Number.isFinite(step1) ? (unit1 ? `${s1} ${unit1}` : s1) : '—';
+      physical = `${p0} × ${p1}`;
+    }
+  }
+
+  const name0 = String(dim0?.name || '').trim();
+  const name1 = String(dim1?.name || '').trim();
+  const labels = (name0 || name1) ? `${name0 || '—'} / ${name1 || '—'}` : '—';
+  return `| ${pixels} | ${physical} | ${labels}`;
+}
+function updateGroupPlaneMeta(group) {
+  const el = group === 'source' ? sourcePlaneMeta : referencePlaneMeta;
+  if (!el) return;
+  const views = groupViews(group);
+  if (views.length === 0) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.textContent = formatPlaneMetaText(views[0]);
+  el.hidden = false;
+}
+function updatePlaneMeta() {
+  updateGroupPlaneMeta('source');
+  updateGroupPlaneMeta('reference');
 }
 function compositeEnabled(group) {
   return group === 'source' ? sourceComposite.checked : referenceComposite.checked;
@@ -468,13 +565,21 @@ function drawAxisLabels(ctx, state) {
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (const value of ticks.major) {
+    const xMajor = ticks.major.filter(value => {
       const x = xAt(value);
-      if (x < left - 0.5 || x > right + 0.5) continue;
-      const label = formatAxisTick(value, ticks.majorStep, xMeta.unit);
+      return x >= left - 0.5 && x <= right + 0.5;
+    });
+    xMajor.forEach((value, index) => {
+      const x = xAt(value);
+      // Time units (s/ms) only on the last tick — same idea as Y's single unit label.
+      const label = formatAxisTick(
+        value,
+        ticks.majorStep,
+        index === xMajor.length - 1 ? xMeta.unit : '',
+      );
       const labelX = clamp(x, left + 2, right - 2);
       ctx.fillText(label, labelX, bottom + 7);
-    }
+    });
     const unit = axisUnitLabel(xMeta.unit);
     if (unit) {
       ctx.textAlign = 'right';
@@ -608,13 +713,11 @@ function createSavePngButton({canvas, getViewport, group, channelIndex, composit
   });
   return button;
 }
-function createCardTitleRow(titleText, saveButton) {
-  const row = document.createElement('div');
-  row.className = 'card-title-row';
-  const title = document.createElement('h2');
-  title.textContent = titleText;
-  row.append(title, saveButton);
-  return row;
+function createCardToolbar(parts) {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'card-toolbar';
+  toolbar.append(...parts);
+  return toolbar;
 }
 
 function mountGroupLayout(group) {
@@ -645,13 +748,14 @@ function mountGroupLayout(group) {
       group,
       composite: true,
     });
-    const titleText = group === 'source' ? 'Source composite' : 'Reference composite';
-    const meta = document.createElement('p');
-    meta.className = 'meta';
-    meta.textContent =
-      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
-      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
-    card.append(createCardTitleRow(titleText, saveBtn), meta, wrap);
+    card.append(
+      createCardToolbar([
+        contrastController.createContrastRow(first),
+        contrastController.createContrastRow(second),
+        saveBtn,
+      ]),
+      wrap,
+    );
     container.appendChild(card);
     state.compositeSlots[group] = slot;
     return;
@@ -671,7 +775,10 @@ function mountGroupLayout(group) {
       group: view.group,
       channelIndex: view.channelIndex,
     });
-    card.append(createCardTitleRow(view.label, saveBtn), wrap);
+    card.append(
+      createCardToolbar([contrastController.createContrastRow(view), saveBtn]),
+      wrap,
+    );
     container.appendChild(card);
   }
 }
@@ -758,6 +865,7 @@ const LUT_COLOR_STOPS = {
   red: [[0,[0,0,0]],[0.35,[110,0,0]],[0.75,[255,45,25]],[1,[255,235,230]]],
   yellow: [[0,[0,0,0]],[0.35,[105,80,0]],[0.75,[255,210,0]],[1,[255,255,220]]],
   green: [[0,[0,0,0]],[0.35,[0,90,42]],[0.75,[0,220,85]],[1,[235,255,235]]],
+  blue: [[0,[0,0,0]],[0.35,[0,40,110]],[0.75,[40,90,255]],[1,[230,235,255]]],
   cyan: [[0,[0,0,0]],[0.35,[0,77,102]],[0.75,[0,200,255]],[1,[230,255,255]]],
   magenta: [[0,[0,0,0]],[0.35,[95,0,105]],[0.75,[255,0,220]],[1,[255,230,255]]],
 };
@@ -774,7 +882,7 @@ function lutColor(t, lut) {
   return [gray, gray, gray];
 }
 function buildLutTables() {
-  const names = ['gray', 'yellow', 'cyan', 'magenta', 'red', 'green', 'fire', 'hot', 'viridis', 'magma', 'inferno', 'cividis'];
+  const names = ['gray', 'yellow', 'cyan', 'magenta', 'red', 'green', 'blue', 'fire', 'hot', 'viridis', 'magma', 'inferno', 'cividis'];
   return Object.fromEntries(names.map(name => {
     const table = new Uint8ClampedArray(256 * 3);
     for (let index = 0; index < 256; index++) {
@@ -789,7 +897,7 @@ function buildLutTables() {
 }
 const LUT_TABLES = buildLutTables();
 const LUT_OPTION_LABELS = {
-  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green',
+  gray:'Gray', yellow:'Yellow', cyan:'Cyan', magenta:'Magenta', red:'Red', green:'Green', blue:'Blue',
   fire:'Fire', hot:'Hot', viridis:'Viridis', magma:'Magma', inferno:'Inferno', cividis:'Cividis',
 };
 function sampleLutRgb(lutName, t) {
@@ -801,9 +909,6 @@ function defaultLutForChannelIndex(channelIndex) {
   if (channelIndex === 0) return 'green';
   if (channelIndex === 1) return 'magenta';
   return 'gray';
-}
-function lutDisplayLabel(lutName) {
-  return LUT_OPTION_LABELS[lutName] || lutName || 'Gray';
 }
 function normalizeIntensity(value, min, span) {
   return Number.isFinite(value) ? clamp((value - min) / span, 0, 1) : 0;
@@ -1425,6 +1530,9 @@ function createContrastController(elements, redrawView) {
   function selectedView() {
     return selectedId ? views.get(selectedId) : null;
   }
+  function logScaleEnabled() {
+    return Boolean(elements.log?.checked);
+  }
   function numberText(value) {
     const magnitude = Math.abs(value);
     if ((magnitude !== 0 && magnitude < 0.001) || magnitude >= 100000) {
@@ -1448,15 +1556,15 @@ function createContrastController(elements, redrawView) {
     if (!activeRangeButton) return;
     const rect = activeRangeButton.getBoundingClientRect();
     const width = elements.popover.offsetWidth || 330;
-    const height = elements.popover.offsetHeight || 190;
+    const height = elements.popover.offsetHeight || 170;
     const margin = 8;
     const left = clamp(rect.left, margin, Math.max(margin, window.innerWidth - width - margin));
-    const below = rect.bottom + 6;
-    const top = below + height <= window.innerHeight - margin
-      ? below
-      : Math.max(margin, rect.top - height - 6);
+    const above = rect.top - height - 6;
+    const top = above >= margin
+      ? above
+      : Math.min(window.innerHeight - height - margin, rect.bottom + 6);
     elements.popover.style.left = `${Math.round(left)}px`;
-    elements.popover.style.top = `${Math.round(top)}px`;
+    elements.popover.style.top = `${Math.round(Math.max(margin, top))}px`;
   }
   function drawHistogram() {
     const view = selectedView();
@@ -1468,14 +1576,19 @@ function createContrastController(elements, redrawView) {
     const width = canvas.width, height = canvas.height;
     const left = 6, right = width - 6, top = 6, bottom = height - 8;
     const maxCount = Math.max(1, ...histogram.bins);
+    const useLog = logScaleEnabled();
+    const maxFrac = useLog ? Math.log1p(maxCount) : maxCount;
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#020617';
     ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = '#64748b';
+    const binCount = histogram.bins.length;
+    // Mid-high LUT sample: channel LUTs peak as Red/Green/… near ~0.75; t=1 is near-white.
+    const [r, g, b] = sampleLutRgb(view.display.lut, 0.75);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
     histogram.bins.forEach((count, index) => {
-      const x0 = left + index / histogram.bins.length * (right - left);
-      const x1 = left + (index + 1) / histogram.bins.length * (right - left);
-      const frac = Math.log1p(count) / Math.log1p(maxCount);
+      const x0 = left + index / binCount * (right - left);
+      const x1 = left + (index + 1) / binCount * (right - left);
+      const frac = (useLog ? Math.log1p(count) : count) / maxFrac;
       const barHeight = frac * (bottom - top);
       ctx.fillRect(x0, bottom - barHeight, Math.max(1, x1 - x0), barHeight);
     });
@@ -1545,47 +1658,34 @@ function createContrastController(elements, redrawView) {
     select.value = current in LUT_OPTION_LABELS ? current : 'gray';
     return select;
   }
-  function mountPanelRows(panel, group) {
-    panel.replaceChildren();
-    const groupViews = [...views.values()]
-      .filter(view => view.group === group)
-      .sort((a, b) => a.channelIndex - b.channelIndex);
-    if (groupViews.length === 0) {
-      panel.hidden = true;
-      return;
-    }
-    panel.hidden = false;
-    const rows = document.createElement('div');
-    rows.className = 'contrast-rows';
-    for (const view of groupViews) {
-      const row = document.createElement('div');
-      row.className = 'contrast-row';
-      row.dataset.viewId = view.id;
-      const channelLabel = document.createElement('span');
-      channelLabel.className = 'contrast-channel-label';
-      channelLabel.textContent = view.label;
-      const lutSelect = buildLutSelect(view.display.lut);
-      lutSelect.title = 'Color LUT';
-      lutSelect.setAttribute('aria-label', `${view.label} color LUT`);
-      lutSelect.addEventListener('change', () => {
-        view.display.lut = lutSelect.value;
-        redrawView(view, {resetView:false});
-      });
-      const rangeButton = document.createElement('button');
-      rangeButton.type = 'button';
-      rangeButton.textContent = 'Range…';
-      rangeButton.addEventListener('click', () => {
-        if (!elements.popover.hidden && selectedId === view.id) closePopover();
-        else openPopoverFor(view.id, rangeButton);
-      });
-      row.append(channelLabel, lutSelect, rangeButton);
-      rows.appendChild(row);
-    }
-    panel.appendChild(rows);
-  }
-  function mountContrastPanels() {
-    mountPanelRows(elements.sourcePanel, 'source');
-    mountPanelRows(elements.referencePanel, 'reference');
+  /**
+   * Build one contrast widget: channel label | LUT select | Range…
+   * Mounted into each channel/composite card toolbar by mountGroupLayout.
+   */
+  function createContrastRow(view) {
+    const row = document.createElement('div');
+    row.className = 'contrast-row';
+    row.dataset.viewId = view.id;
+    const channelLabel = document.createElement('span');
+    channelLabel.className = 'contrast-channel-label';
+    channelLabel.textContent = view.label;
+    const lutSelect = buildLutSelect(view.display.lut);
+    lutSelect.title = 'Color LUT';
+    lutSelect.setAttribute('aria-label', `${view.label} color LUT`);
+    lutSelect.addEventListener('change', () => {
+      view.display.lut = lutSelect.value;
+      redrawView(view, {resetView:false});
+      if (!elements.popover.hidden && selectedId === view.id) drawHistogram();
+    });
+    const rangeButton = document.createElement('button');
+    rangeButton.type = 'button';
+    rangeButton.textContent = 'Range…';
+    rangeButton.addEventListener('click', () => {
+      if (!elements.popover.hidden && selectedId === view.id) closePopover();
+      else openPopoverFor(view.id, rangeButton);
+    });
+    row.append(channelLabel, lutSelect, rangeButton);
+    return row;
   }
 
   elements.min.addEventListener('input', applyNumericRange);
@@ -1597,6 +1697,9 @@ function createContrastController(elements, redrawView) {
     syncPopoverFields();
     redrawView(view, {resetView:false});
     drawHistogram();
+  });
+  elements.log?.addEventListener('change', () => {
+    if (!elements.popover.hidden) drawHistogram();
   });
   elements.histogram.addEventListener('pointerdown', event => {
     const view = selectedView();
@@ -1641,16 +1744,12 @@ function createContrastController(elements, redrawView) {
         view.display = {lut: defaultLutForChannelIndex(view.channelIndex), min, max};
         views.set(view.id, view);
       }
-      mountContrastPanels();
     },
+    createContrastRow,
     reset() {
       closePopover();
       views.clear();
       selectedId = null;
-      elements.sourcePanel.replaceChildren();
-      elements.referencePanel.replaceChildren();
-      elements.sourcePanel.hidden = true;
-      elements.referencePanel.hidden = true;
     },
     redrawGroup(group) {
       redrawGroupDisplay(group, {resetView:false});
@@ -1717,6 +1816,7 @@ async function renderOpen(payload) {
   state.activeViews = views;
   updateCompositeControls();
   updateAxesControls();
+  updatePlaneMeta();
   splitPane.setEnabled(Boolean(reference));
   contrastController.setViews(views);
   mountGroupLayout('source');
@@ -1757,10 +1857,9 @@ const splitPane = createSplitPane({
 });
 const contrastController = createContrastController(
   {
-    sourcePanel: document.getElementById('sourceContrast'),
-    referencePanel: document.getElementById('referenceContrast'),
     popover: document.getElementById('rangePopover'),
     title: document.getElementById('rangeTitle'),
+    log: rangeLog,
     histogram: document.getElementById('rangeHistogram'),
     min: document.getElementById('rangeMin'),
     max: document.getElementById('rangeMax'),

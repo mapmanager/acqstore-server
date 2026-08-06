@@ -12,13 +12,105 @@ import {
   sourceAxesControl,
   referenceAxesControl,
   showScanPath,
+  sourcePlaneMeta,
+  referencePlaneMeta,
 } from './dom.js';
 import {createImageViewport} from './viewport.js';
 import {drawScanPathOverlay} from './scan-path.js';
 import {drawAxisLabels} from './axes.js';
 import {renderPlaneBitmap, renderCompositeBitmap} from './render.js';
-import {lutDisplayLabel} from './lut.js';
-import {createSavePngButton, createCardTitleRow} from './save-png.js';
+import {createSavePngButton} from './save-png.js';
+
+/** Bound from app.js after createContrastController (avoids circular init). */
+let contrastUi = null;
+
+function bindContrastUi(api) {
+  contrastUi = api;
+}
+
+function createCardToolbar(parts) {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'card-toolbar';
+  toolbar.append(...parts);
+  return toolbar;
+}
+
+function formatStepValue(value) {
+  if (!Number.isFinite(value)) return '—';
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-6 || magnitude >= 1e6)) {
+    return value.toExponential(6);
+  }
+  // Light trim only — value is the JSON step, never size×step.
+  return String(Number(value.toPrecision(8)));
+}
+
+/** Compact unit label for the plane-meta row (keeps time units; unlike tick gutters). */
+function metaUnitLabel(unit) {
+  const compact = String(unit || '').trim().toLowerCase();
+  if (['s', 'sec', 'second', 'seconds'].includes(compact)) return 's';
+  if (['ms', 'millisecond', 'milliseconds'].includes(compact)) return 'ms';
+  if (['um', 'µm', 'micrometer', 'micrometers', 'micrometre', 'micrometres'].includes(compact)) {
+    return 'µm';
+  }
+  return String(unit || '').trim();
+}
+
+/**
+ * Build section-heading meta: "| <px> | <step0 unit0 × step1 unit1> | <labels>".
+ * Reads plane.axes / reference.plane.axes via view.axes (dim0 then dim1). No size×step.
+ */
+function formatPlaneMetaText(view) {
+  const axes = view?.axes || {};
+  // displayAxesFromPlane: axes.x ← dim0, axes.y ← dim1 (Open response plane.axes order).
+  const dim0 = axes.x;
+  const dim1 = axes.y;
+  const size0 = Number(dim0?.size);
+  const size1 = Number(dim1?.size);
+  const pixels = (size0 > 0 && size1 > 0)
+    ? `${size0}×${size1} px`
+    : '—';
+
+  const step0 = Number(dim0?.step);
+  const step1 = Number(dim1?.step);
+  const unit0 = metaUnitLabel(dim0?.unit);
+  const unit1 = metaUnitLabel(dim1?.unit);
+  let physical = '—';
+  if (Number.isFinite(step0) || Number.isFinite(step1)) {
+    const s0 = Number.isFinite(step0) ? formatStepValue(step0) : '—';
+    const s1 = Number.isFinite(step1) ? formatStepValue(step1) : '—';
+    if (unit0 && unit1 && unit0 === unit1 && Number.isFinite(step0) && Number.isFinite(step1)) {
+      physical = `${s0}×${s1} ${unit0}`;
+    } else {
+      const p0 = Number.isFinite(step0) ? (unit0 ? `${s0} ${unit0}` : s0) : '—';
+      const p1 = Number.isFinite(step1) ? (unit1 ? `${s1} ${unit1}` : s1) : '—';
+      physical = `${p0} × ${p1}`;
+    }
+  }
+
+  const name0 = String(dim0?.name || '').trim();
+  const name1 = String(dim1?.name || '').trim();
+  const labels = (name0 || name1) ? `${name0 || '—'} / ${name1 || '—'}` : '—';
+  return `| ${pixels} | ${physical} | ${labels}`;
+}
+
+function updateGroupPlaneMeta(group) {
+  const el = group === 'source' ? sourcePlaneMeta : referencePlaneMeta;
+  if (!el) return;
+  const views = groupViews(group);
+  if (views.length === 0) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.textContent = formatPlaneMetaText(views[0]);
+  el.hidden = false;
+}
+
+function updatePlaneMeta() {
+  updateGroupPlaneMeta('source');
+  updateGroupPlaneMeta('reference');
+}
 
 function destroyActiveViews() {
   state.activeViews.forEach(view => view.viewport?.destroy());
@@ -28,6 +120,7 @@ function destroyActiveViews() {
     state.compositeSlots[group]?.viewport?.destroy();
     state.compositeSlots[group] = null;
   }
+  updatePlaneMeta();
 }
 function groupViews(group) {
   return state.activeViews
@@ -84,6 +177,7 @@ function mountGroupLayout(group) {
   destroyGroupViewports(group);
   container.replaceChildren();
   if (views.length === 0) return;
+  if (!contrastUi) throw new Error('Contrast UI not bound');
 
   if (compositeEnabled(group) && compositePair(group)) {
     const [first, second] = compositePair(group);
@@ -106,13 +200,14 @@ function mountGroupLayout(group) {
       group,
       composite: true,
     });
-    const titleText = group === 'source' ? 'Source composite' : 'Reference composite';
-    const meta = document.createElement('p');
-    meta.className = 'meta';
-    meta.textContent =
-      `Channel ${first.channelIndex} (${lutDisplayLabel(first.display?.lut)}) · ` +
-      `Channel ${second.channelIndex} (${lutDisplayLabel(second.display?.lut)})`;
-    card.append(createCardTitleRow(titleText, saveBtn), meta, wrap);
+    card.append(
+      createCardToolbar([
+        contrastUi.createContrastRow(first),
+        contrastUi.createContrastRow(second),
+        saveBtn,
+      ]),
+      wrap,
+    );
     container.appendChild(card);
     state.compositeSlots[group] = slot;
     return;
@@ -132,7 +227,10 @@ function mountGroupLayout(group) {
       group: view.group,
       channelIndex: view.channelIndex,
     });
-    card.append(createCardTitleRow(view.label, saveBtn), wrap);
+    card.append(
+      createCardToolbar([contrastUi.createContrastRow(view), saveBtn]),
+      wrap,
+    );
     container.appendChild(card);
   }
 }
@@ -209,10 +307,12 @@ function onCompositeChange(group) {
 }
 
 export {
+  bindContrastUi,
   destroyActiveViews,
   groupViews,
   updateCompositeControls,
   updateAxesControls,
+  updatePlaneMeta,
   mountGroupLayout,
   redrawGroupDisplay,
   drawChannelView,

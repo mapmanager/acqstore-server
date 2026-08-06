@@ -125,13 +125,21 @@ function drawAxisLabels(ctx, drawState) {
     ctx.fillStyle = 'rgba(203, 213, 225, 0.84)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (const value of ticks.major) {
+    const xMajor = ticks.major.filter(value => {
       const x = xAt(value);
-      if (x < left - 0.5 || x > right + 0.5) continue;
-      const label = formatAxisTick(value, ticks.majorStep, xMeta.unit);
+      return x >= left - 0.5 && x <= right + 0.5;
+    });
+    xMajor.forEach((value, index) => {
+      const x = xAt(value);
+      // Time units (s/ms) only on the last tick — same idea as Y's single unit label.
+      const label = formatAxisTick(
+        value,
+        ticks.majorStep,
+        index === xMajor.length - 1 ? xMeta.unit : '',
+      );
       const labelX = clamp(x, left + 2, right - 2);
       ctx.fillText(label, labelX, bottom + 7);
-    }
+    });
     const unit = axisUnitLabel(xMeta.unit);
     if (unit) {
       ctx.textAlign = 'right';
@@ -181,4 +189,4 @@ function drawAxisLabels(ctx, drawState) {
   ctx.restore();
 }
 
-export {adaptiveAxisTicks, drawAxisLabels};
+export {adaptiveAxisTicks, drawAxisLabels, axisUnitLabel};
