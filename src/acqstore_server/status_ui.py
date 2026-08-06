@@ -40,21 +40,22 @@ logger = get_logger('status_ui')
 PUBLIC_DOCS_URL = 'https://mapmanager.github.io/acqstore-server/'
 
 
-def format_status_line(status: ServerStatus) -> str:
-    """Return a one-line status summary for the footer (server only).
+def format_status_line(status: ServerStatus) -> tuple[str, str]:
+    """Return left (primary) and right (status) footer strings.
 
     The NiceGUI window bind port is an implementation detail — not shown here.
-    Package version lives in the header only.
+    Package version lives in the header only. Health / bind address live on the
+    right so the primary line stays short.
     """
-    if status.running and status.healthy:
-        server_state = f'Server running (healthy) {status.base_url}'
-    elif status.running:
-        server_state = f'Server running (not healthy) {status.base_url}'
+    if status.running:
+        left = f'Server running {status.base_url}'
+        right = 'healthy' if status.healthy else 'not healthy'
     else:
-        server_state = f'Server stopped ({status.host}:{status.port})'
+        left = 'Server stopped'
+        right = ''
     if status.error:
-        server_state = f'{server_state} — {status.error}'
-    return server_state
+        left = f'{left} — {status.error}'
+    return left, right
 
 
 def _open_path_with_default_app(path: Path) -> None:
@@ -318,16 +319,23 @@ def build_status_page(
 
         # In-flow status bar (not Quasar ui.footer) so the log flexes above it.
         with ui.row().classes(
-            'w-full bg-grey-10 text-grey-4 q-px-md q-py-xs items-center'
-        ).style('flex: 0 0 auto;'):
-            footer = ui.label(
-                format_status_line(controller.status())
-            ).classes('text-caption')
+            'w-full bg-grey-10 text-grey-4 q-px-md items-center'
+        ).style('flex: 0 0 auto; min-height: 36px;'):
+            footer_left = ui.label('').classes('text-caption')
+            ui.space()
+            footer_right = ui.label('').classes('text-caption')
+
+        def _apply_footer(status: ServerStatus) -> None:
+            left, right = format_status_line(status)
+            if footer_left.text != left:
+                footer_left.set_text(left)
+            if footer_right.text != right:
+                footer_right.set_text(right)
+
+        _apply_footer(controller.status())
 
         def _refresh_footer_and_controls() -> None:
-            text = format_status_line(controller.status())
-            if footer.text != text:
-                footer.set_text(text)
+            _apply_footer(controller.status())
             _sync_controls()
 
         ui.timer(0.5, _refresh_footer_and_controls)

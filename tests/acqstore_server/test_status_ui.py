@@ -14,12 +14,11 @@ def test_format_status_line_healthy() -> None:
         base_url='http://127.0.0.1:8767',
         healthy=True,
     )
-    text = format_status_line(status)
-    assert 'Server running' in text
-    assert 'healthy' in text
-    assert 'http://127.0.0.1:8767' in text
-    assert 'UI ' not in text
-    assert '8766' not in text
+    left, right = format_status_line(status)
+    assert left == 'Server running http://127.0.0.1:8767'
+    assert right == 'healthy'
+    assert 'UI ' not in left
+    assert '8766' not in left and '8766' not in right
 
 
 def test_format_status_line_stopped_with_error() -> None:
@@ -31,10 +30,23 @@ def test_format_status_line_stopped_with_error() -> None:
         healthy=False,
         error='port in use',
     )
-    text = format_status_line(status)
-    assert 'Server stopped' in text
-    assert 'port in use' in text
-    assert 'UI ' not in text
+    left, right = format_status_line(status)
+    assert left == 'Server stopped — port in use'
+    assert right == ''
+    assert 'UI ' not in left
+
+
+def test_format_status_line_running_unhealthy() -> None:
+    status = ServerStatus(
+        running=True,
+        host='127.0.0.1',
+        port=8767,
+        base_url='http://127.0.0.1:8767',
+        healthy=False,
+    )
+    left, right = format_status_line(status)
+    assert left == 'Server running http://127.0.0.1:8767'
+    assert right == 'not healthy'
 
 
 def test_force_process_exit_schedules_os_exit(monkeypatch) -> None:

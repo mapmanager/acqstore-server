@@ -1,0 +1,247 @@
+/* AcqStore Reference View drop-in CSS (graft-kit).
+ * Host-safe, scoped under .acqstore-ref-root.
+ * No split-pane / split-viewport (disclosure card only).
+ * Inline into output monolith <style> for file:// loading.
+ * Provenance: extracted from linescan_analyzer_v1_18_acqstore_v2_e.html DROPIN CSS
+ * (adapter over archive/index.monolith.html reference-view markers).
+ */
+.acqstore-ref-root .grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px;
+}
+.acqstore-ref-root .card {
+  border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:12px; overflow:hidden;
+}
+.acqstore-ref-root .section-heading {
+  display:flex; align-items:center; justify-content:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:10px;
+}
+.acqstore-ref-root .section-heading h2 {
+  margin:0;
+}
+.acqstore-ref-root .contrast-panel.card {
+  padding:6px 8px;
+}
+.acqstore-ref-root .toggle {
+  display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; cursor:pointer;
+}
+.acqstore-ref-root .toggle input {
+  margin:0;
+}
+.acqstore-ref-root .contrast-panel {
+  flex:0 0 auto; padding:6px 8px;
+}
+.acqstore-ref-root .contrast-panel[hidden] {
+  display:none;
+}
+#acqstoreRefRangePopover {
+  position:fixed; z-index:20; width:330px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:#07101f; box-shadow:0 16px 38px rgba(0,0,0,.55);
+}
+#acqstoreRefRangePopover[hidden] {
+  display:none;
+}
+#acqstoreRefRangePopover h2 {
+  margin-bottom:8px;
+}
+#acqstoreRefRangePopover .histogram-wrap {
+  padding:4px; border:1px solid var(--line); border-radius:8px; background:#020617;
+}
+#acqstoreRefRangeHistogram {
+  width:300px; height:100px; cursor:ew-resize; touch-action:none;
+}
+#acqstoreRefRangePopover .range-fields {
+  display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:8px; margin-top:8px;
+}
+#acqstoreRefRangePopover .range-fields label {
+  display:grid; gap:4px; color:var(--muted); font-size:12px;
+}
+#acqstoreRefRangePopover .range-fields input {
+  width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#020617; color:var(--text);
+}
+.acqstore-ref-root .meta {
+  color:var(--muted); font-size:12px; margin:0 0 8px;
+}
+.acqstore-ref-root .card-title-row {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin:0 0 10px; min-width:0;
+}
+.acqstore-ref-root .card-title-row h2 {
+  margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.acqstore-ref-root .save-png-btn {
+  flex:0 0 auto; padding:3px 8px; font-size:11px; font-weight:600; line-height:1.2;
+    border-radius:6px; border:0; background:var(--accent); color:#03131d; cursor:pointer;
+}
+.acqstore-ref-root .save-png-btn:disabled {
+  opacity:.45; cursor:default;
+}
+
+/* Host-safe layout — do not use monolith split-pane.single (zero-height trap). */
+.acqstore-ref-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.acqstore-ref-root.collapsible > h2 { cursor: pointer; }
+/* Host .card.collapsible h2::after adds ▾ to every nested h2 — keep caret on title only. */
+.acqstore-ref-root .card-title-row h2::after,
+.acqstore-ref-root .section-heading h2::after {
+  content: none !important;
+}
+.acqstore-ref-root .card-title-row h2 {
+  cursor: default;
+}
+.acqstore-ref-root #referenceContrast {
+  display: none !important;
+}
+.acqstore-ref-root .card-title-row.acqstore-ref-card-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  min-width: 0;
+}
+.acqstore-ref-root .acqstore-ref-inline-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+}
+.acqstore-ref-root .acqstore-ref-ctrl-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.acqstore-ref-root .acqstore-ref-card-header > h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 13px;
+}
+.acqstore-ref-root .acqstore-ref-card-header .save-png-btn {
+  margin-left: auto;
+}
+.acqstore-ref-root .acqstore-ref-ctrl-group .contrast-channel-label {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.acqstore-ref-root .acqstore-ref-ctrl-group select {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 88px !important;
+  max-width: 110px !important;
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+}
+.acqstore-ref-root .acqstore-ref-ctrl-group button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.acqstore-ref-root .acqstore-ref-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.acqstore-ref-root .acqstore-ref-grid.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  min-height: 380px;
+}
+.acqstore-ref-root .acqstore-ref-grid > .card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 380px;
+  height: auto;
+  overflow: hidden;
+}
+.acqstore-ref-root .canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 340px;
+  height: 360px;
+  overflow: hidden;
+  background: #020617;
+  touch-action: none;
+}
+.acqstore-ref-root .canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  image-rendering: pixelated;
+}
+/* One contrast row: [label][LUT][Range…] — defeat host select{width:100%} */
+.acqstore-ref-root .contrast-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.acqstore-ref-root .contrast-row {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line, #334155);
+}
+.acqstore-ref-root .contrast-row:last-child { border-bottom: 0; }
+.acqstore-ref-root .contrast-row .contrast-channel-label {
+  flex: 0 0 auto;
+  min-width: 72px;
+  white-space: nowrap;
+  color: var(--text, #e5e7eb);
+  font-size: 11px;
+  font-weight: 600;
+}
+.acqstore-ref-root .contrast-row select {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 96px !important;
+  max-width: 120px !important;
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+  line-height: 1.2;
+  border: 1px solid var(--line, #334155);
+  border-radius: 6px;
+  background: #020617;
+  color: var(--text, #e5e7eb);
+}
+.acqstore-ref-root .contrast-row button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 6px;
+}
+.acqstore-ref-root .toggle[hidden],
+.acqstore-ref-root .contrast-panel[hidden],
+.acqstore-ref-root #acqstoreRefEmpty[hidden] {
+  display: none !important;
+}
+#acqstoreRefRangePopover {
+  position: fixed;
+  z-index: 1400;
+  width: 330px;
+  padding: 10px;
+  border: 1px solid var(--accent, #38bdf8);
+  border-radius: 10px;
+  background: #07101f;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+  color: var(--text, #e5e7eb);
+}
+#acqstoreRefRangePopover[hidden] { display: none !important; }
+#acqstoreRefShims { display: none !important; }

@@ -320,8 +320,8 @@ def native_ui_run_kwargs(*, host: str, port: int) -> dict[str, object]:
 # Hardcoded initial native status-window geometry (pywebview create_window).
 _NATIVE_WINDOW_X = 80
 _NATIVE_WINDOW_Y = 80
-_NATIVE_WINDOW_WIDTH = 640
-_NATIVE_WINDOW_HEIGHT = 480
+_NATIVE_WINDOW_WIDTH = 720
+_NATIVE_WINDOW_HEIGHT = 380
 
 
 def configure_native_status_window(nicegui_app: Any | None = None) -> None:
