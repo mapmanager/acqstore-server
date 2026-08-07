@@ -219,13 +219,11 @@
 
   @media(max-width:1400px){.epochAucGrid{grid-template-columns:1fr}.coordWorkspace{grid-template-columns:1fr}.coordControls{grid-template-columns:1fr 1fr}} @media(max-width:1100px){.layout{display:block}.sidebar{position:relative;top:0;width:auto;max-height:none;resize:none;margin-bottom:16px}.summaryGrid{grid-template-columns:1fr 1fr}.summaryColumns{grid-template-columns:1fr}.row3{grid-template-columns:1fr 1fr}.coordGrid{grid-template-columns:1fr}.coordControls,.coordSummaryGrid{grid-template-columns:1fr 1fr}}
 
-  /* ==== ACQSTORE ADDED DROPIN CSS BEGIN 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED DROPIN CSS BEGIN 2026-08-06 ==== */
 /* AcqStore Reference View drop-in CSS (graft-kit).
  * Host-safe, scoped under .acqstore-ref-root.
- * No split-pane / split-viewport (disclosure card only).
+ * Reference UI is a collapsible disclosure card only.
  * Inline into output monolith <style> for file:// loading.
- * Provenance: extracted from linescan_analyzer_v1_18_acqstore_v2_e.html DROPIN CSS
- * (adapter over archive/index.monolith.html reference-view markers).
  */
 .acqstore-ref-root .grid {
   display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px;
@@ -306,7 +304,7 @@
   opacity:.45; cursor:default;
 }
 
-/* Host-safe layout — do not use monolith split-pane.single (zero-height trap). */
+/* Host-safe layout for disclosure card canvases. */
 .acqstore-ref-root {
   display: flex;
   flex-direction: column;
@@ -481,7 +479,7 @@
   white-space: nowrap;
   min-width: 0;
 }
-  /* ==== ACQSTORE ADDED DROPIN CSS END 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED DROPIN CSS END 2026-08-06 ==== */
 </style>
 </head>
 <body>
@@ -505,15 +503,16 @@
       <div id="loadInfo" class="alert">Choose a Calcium image. A Vessels/reference image is optional. TIFF decoding preserves 8-bit, 16-bit, and 32-bit float grayscale values when possible.</div>
     </section>
 
-    <!-- ==== ACQSTORE ADDED LOAD CARD BEGIN 2026-08-06 16:20 EDT ==== -->
-    <section class="card" id="acqstoreLoadCard">
-      <h2>AcqStore Server</h2>
-      <div class="acqstoreLoadRow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0">
-        <button id="acqstoreLoadBtn" class="ok" type="button">Load File</button>
-        <span id="acqstoreLoadStatus" class="mini" style="color:var(--muted)">Idle</span>
-      </div>
-    </section>
-    <!-- ==== ACQSTORE ADDED LOAD CARD END 2026-08-06 16:20 EDT ==== -->
+<!-- ==== ACQSTORE ADDED LOAD CARD BEGIN 2026-08-06 ==== -->
+<!-- Frozen Load File card — copy verbatim into grafts. Do not restyle. -->
+<section class="card" id="acqstoreLoadCard">
+  <h2>AcqStore Server</h2>
+  <div class="acqstoreLoadRow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0">
+    <button id="acqstoreLoadBtn" class="ok" type="button">Load File</button>
+    <span id="acqstoreLoadStatus" class="mini" style="color:var(--muted)">Idle</span>
+  </div>
+</section>
+<!-- ==== ACQSTORE ADDED LOAD CARD END 2026-08-06 ==== -->
 
     <section class="card collapsible collapsed" id="box2">
       <h2>2. Define Pixel Dimensions</h2>
@@ -690,9 +689,10 @@
       </div>
     </section>
 
-    <!-- ==== ACQSTORE ADDED REFERENCE HOST BEGIN 2026-08-06 16:20 EDT ==== -->
-    <div id="acqstoreReferenceHost"></div>
-    <!-- ==== ACQSTORE ADDED REFERENCE HOST END 2026-08-06 16:20 EDT ==== -->
+<!-- ==== ACQSTORE ADDED REFERENCE HOST BEGIN 2026-08-06 ==== -->
+<!-- Empty mount point for AcqStoreReferenceView — copy verbatim. -->
+<div id="acqstoreReferenceHost"></div>
+<!-- ==== ACQSTORE ADDED REFERENCE HOST END 2026-08-06 ==== -->
 
     <section class="card compactCard">
       <div class="sectionTitleBar">
@@ -5550,18 +5550,13 @@ function setupEvents(){
 
 setupCollapsibles(); setupCoordPanelToggles(); setupEvents(); updateEpochDependentUi(); updateChannelViewTabs(); renderEpochs(); renderVesselRois(); renderRois(); updateBleedthroughUi(); renderAll(); updatePerformanceInfo();
 
-/* ==== ACQSTORE ADDED DROPIN JS BEGIN 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED DROPIN JS BEGIN 2026-08-06 ==== */
 /*!
  * AcqStore Reference View drop-in (graft-kit / owned artifact).
  *
- * Provenance (one-time package for Phase B):
- *   Host adapter + LLM_COPY viewer core extracted from
- *   linescan_analyzer_v1_18_acqstore_v2_e.html DROPIN JS
- *   (itself derived from static/demo/v2/archive/index.monolith.html markers).
- *
  * Graft rules:
  *   - Inline this file into the output monolith <script> (file:// safe).
- *   - Reference UI is a collapsible disclosure card — NOT demo split-pane.
+ *   - Reference UI is a collapsible disclosure card only.
  *   - Do not reinvent viewport / axes / contrast / Save PNG.
  */
 (function (global) {
@@ -6813,67 +6808,6 @@ function createImageViewport(canvas, options={}) {
 }
 
 
-
-// --- split pane ---
-/**
- * Top/bottom drag splitter between source and reference panes.
- */
-function createSplitPane({container, first, second, divider, minFirst=0, minSecond=0, onResize=null}) {
-  let dragging = false;
-
-  function setEnabled(enabled) {
-    container.classList.toggle('single', !enabled);
-    divider.hidden = !enabled;
-    if (!enabled) {
-      first.style.flex = '';
-      first.style.height = '';
-      second.style.flex = '';
-      second.style.height = '';
-    } else if (!first.style.height) {
-      first.style.flex = '1 1 0';
-      second.style.flex = '1 1 0';
-    }
-    onResize?.();
-  }
-  function onPointerMove(event) {
-    if (!dragging) return;
-    const rect = container.getBoundingClientRect();
-    const dividerSize = divider.offsetHeight || 8;
-    let topHeight = event.clientY - rect.top;
-    topHeight = clamp(topHeight, minFirst, rect.height - minSecond - dividerSize);
-    first.style.flex = 'none';
-    first.style.height = `${Math.round(topHeight)}px`;
-    second.style.flex = '1 1 0';
-    second.style.height = '';
-    onResize?.();
-    event.preventDefault();
-  }
-  function stopDrag(event) {
-    if (!dragging) return;
-    dragging = false;
-    divider.classList.remove('active');
-    document.body.style.removeProperty('cursor');
-    document.body.style.removeProperty('user-select');
-    try { divider.releasePointerCapture?.(event.pointerId); } catch (_err) {}
-    onResize?.();
-  }
-
-  divider.addEventListener('pointerdown', event => {
-    if (divider.hidden) return;
-    dragging = true;
-    divider.classList.add('active');
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-    divider.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-  });
-  divider.addEventListener('pointermove', onPointerMove);
-  divider.addEventListener('pointerup', stopDrag);
-  divider.addEventListener('pointercancel', stopDrag);
-
-  return {setEnabled};
-}
-
 // --- layout / composite draw ---
 function ensureImageViewport(target, {canvas, group, getScanPath, getLineRoi, getAxes}) {
   if (target.viewport) return target.viewport;
@@ -7427,9 +7361,9 @@ const api = {
 
 global.AcqStoreReferenceView = api;
 })(typeof window !== 'undefined' ? window : globalThis);
-/* ==== ACQSTORE ADDED DROPIN JS END 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED DROPIN JS END 2026-08-06 ==== */
 
-/* ==== ACQSTORE ADDED LOAD WIRING BEGIN 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED LOAD WIRING BEGIN 2026-08-06 ==== */
 /* ==== ACQSTORE LOAD WIRING TEMPLATE ====
  * Copy into the grafted monolith after inlined reference-view.js.
  * ADAPT ONLY the setImage(...) call site to match Phase A findings
@@ -7552,7 +7486,7 @@ global.AcqStoreReferenceView = api;
 
   btn?.addEventListener('click', onLoad);
 })();
-/* ==== ACQSTORE ADDED LOAD WIRING END 2026-08-06 16:20 EDT ==== */
+/* ==== ACQSTORE ADDED LOAD WIRING END 2026-08-06 ==== */
 </script>
 </body>
 </html>

@@ -17,8 +17,7 @@ output is always a new file.
 **Output must load as `file://`** in a browser (inline all AcqStore CSS/JS; no
 `<script src>` / `<link>` to graft-kit paths).
 
-Phase B additive payload: `acqstore-linescan-graft-packet/graft-kit/`
-(canonical location; do not keep a second copy elsewhere).
+Phase B additive payload: `graft-kit/` in this packet.
 
 ---
 

@@ -1,9 +1,7 @@
 /* AcqStore Reference View drop-in CSS (graft-kit).
  * Host-safe, scoped under .acqstore-ref-root.
- * No split-pane / split-viewport (disclosure card only).
+ * Reference UI is a collapsible disclosure card only.
  * Inline into output monolith <style> for file:// loading.
- * Provenance: extracted from linescan_analyzer_v1_18_acqstore_v2_e.html DROPIN CSS
- * (adapter over archive/index.monolith.html reference-view markers).
  */
 .acqstore-ref-root .grid {
   display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px;
@@ -84,7 +82,7 @@
   opacity:.45; cursor:default;
 }
 
-/* Host-safe layout — do not use monolith split-pane.single (zero-height trap). */
+/* Host-safe layout for disclosure card canvases. */
 .acqstore-ref-root {
   display: flex;
   flex-direction: column;
